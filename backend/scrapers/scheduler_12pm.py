@@ -38,7 +38,9 @@ class Daily12PMScheduler:
         start_time = time.time()
         simulated_html_changes = simulated_html_changes or {}
 
-        # 1. Genel Kamu Kaynaklarını Tara
+        # 1. Genel Kamu Kaynaklarını Tara & Günü Bitenleri Otomatik Temizle
+        purged_expired_count = db.purge_expired_announcements(today_str=check_date)
+
         new_jnd = OfficialSourcesScraper.scrape_jandarma()
         new_msu = OfficialSourcesScraper.scrape_msu()
         new_osym = OfficialSourcesScraper.scrape_osym()

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
+
 
 class ChatMessage {
   final String text;
@@ -104,8 +106,22 @@ class _RadarAISheetState extends State<RadarAISheet> {
     _textController.clear();
     _scrollToBottom();
 
-    // AI Yanıtı Simülasyonu / Fallback
-    Future.delayed(const Duration(milliseconds: 600), () {
+    // Canlı Render API Çağrısı (Fallback Korumalı)
+    ApiService.askRadarAI(
+      userId: widget.isVip ? "user-vip" : "user-guest",
+      message: clean,
+    ).then((res) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add(ChatMessage(
+          text: res["reply"] ?? "Sistem şu an aktif değil",
+          isUser: false,
+          suggestedUrl: res["suggested_url"],
+        ));
+      });
+      _scrollToBottom();
+    }).catchError((_) {
+      // Çevrimdışı / Hata durumunda yerel zengin bilgi tabanından yanıtla
       if (!mounted) return;
       final replyData = _generateAiReply(clean);
       setState(() {
@@ -118,6 +134,7 @@ class _RadarAISheetState extends State<RadarAISheet> {
       _scrollToBottom();
     });
   }
+
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -21,6 +21,8 @@ class ExamScheduleItem(BaseModel):
     title: str
     organization: str  # ÖSYM, MSB, JSGA, EGM vb.
     application_dates: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
     exam_date: Optional[str] = None
     result_date: Optional[str] = None
     status: ExamStatus

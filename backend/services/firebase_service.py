@@ -128,3 +128,55 @@ class FirebaseNotificationService:
                 "type": "announcement_opened"
             }
         )
+
+    @classmethod
+    def notify_targeted_alarm_subscribers(
+        cls,
+        channel_id: str,
+        title: str,
+        organization: str,
+        official_url: str,
+        target_tokens: list
+    ) -> Dict[str, Any]:
+        """
+        Kişiye Özel Bildirim Motoru:
+        Müşteri neyin bildirimini açtıysa SADECE ona bildirim gider.
+        İlgili channel_id'ye abone olan cihazların FCM tokenlarına push gönderir.
+        """
+        notif_title = f"🔔 {organization} Alarmı: Başvuru Açıldı!"
+        notif_body = f"Takip ettiğiniz '{title}' için başvurular başladı. Detaylar ve başvuru için dokunun."
+
+        if not target_tokens:
+            logger.info(f"ℹ️ [{channel_id}] için aktif alarm kurmuş kullanıcı bulunamadı.")
+            return {"success": True, "sent_count": 0, "message": "No active alarm subscribers for this channel"}
+
+        cls.initialize()
+        sent_count = 0
+
+        for token in target_tokens:
+            if cls._initialized and FIREBASE_INSTALLED:
+                try:
+                    message = messaging.Message(
+                        notification=messaging.Notification(
+                            title=notif_title,
+                            body=notif_body
+                        ),
+                        data={"url": official_url, "channel_id": channel_id},
+                        token=token
+                    )
+                    messaging.send(message)
+                    sent_count += 1
+                except Exception as e:
+                    logger.error(f"FCM token gönderim hatası ({token[:10]}...): {e}")
+            else:
+                # Simülasyon modu
+                print(f"[HEDEFLİ PUSH SİMÜLASYONU] Token: {token[:10]}... | İlan: {channel_id} | Başlık: {notif_title}")
+                sent_count += 1
+
+        logger.info(f"🎯 [{channel_id}] alarmını açmış {sent_count} kişiye özel bildirim iletildi.")
+        return {
+            "success": True,
+            "channel_id": channel_id,
+            "sent_count": sent_count,
+            "title": notif_title
+        }

@@ -1,6 +1,16 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:share_plus/share_plus.dart';
+import '../services/cache_service.dart';
+import '../services/ad_service.dart';
+import 'profile_settings_screen.dart';
+
+
 
 class ChannelAlarm {
   final String id;
@@ -21,7 +31,14 @@ class ChannelAlarm {
 }
 
 class HomeFeedScreen extends StatefulWidget {
-  const HomeFeedScreen({Key? key}) : super(key: key);
+  final bool isVip;
+  final VoidCallback? onUpgradeVip;
+
+  const HomeFeedScreen({
+    Key? key,
+    this.isVip = false,
+    this.onUpgradeVip,
+  }) : super(key: key);
 
   @override
   State<HomeFeedScreen> createState() => _HomeFeedScreenState();
@@ -29,9 +46,147 @@ class HomeFeedScreen extends StatefulWidget {
 
 class _HomeFeedScreenState extends State<HomeFeedScreen> {
   bool _isUserVip = false;
-  final int _freeAlarmLimit = 3;
+  bool get _effectiveVip => widget.isVip || _isUserVip;
+  final int _baseNotificationLimit = 3;
+  int _bonusNotifications = 0;
+  int _usedNotifications = 1;
+  bool _isLoadingLive = false;
+  bool _isOfflineMode = false;
+
+  int get _totalAllowedNotifications => _baseNotificationLimit + _bonusNotifications;
+  int get _remainingNotifications => (_totalAllowedNotifications - _usedNotifications).clamp(0, _totalAllowedNotifications);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCachedAlarms();
+    _syncWithLiveServer();
+  }
+
+  Future<void> _loadCachedAlarms() async {
+    try {
+      final activeIds = await CacheService.getActiveAlarms();
+      final bonus = await CacheService.getBonusNotifications();
+      final used = await CacheService.getUsedNotifications();
+      if (mounted) {
+        setState(() {
+          _bonusNotifications = bonus;
+          _usedNotifications = used;
+          if (activeIds.isNotEmpty) {
+            for (var ch in _channels) {
+              ch.isAlarmActive = activeIds.contains(ch.id);
+            }
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _syncWithLiveServer() async {
+    try {
+      setState(() => _isLoadingLive = true);
+      final liveSchedules = await ApiService.getExamSchedules();
+      if (liveSchedules.isNotEmpty && mounted) {
+        setState(() {
+          _isOfflineMode = false;
+          _isLoadingLive = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isOfflineMode = true;
+          _isLoadingLive = false;
+        });
+      }
+    }
+  }
+
+  void _shareOnWhatsApp(ChannelAlarm ch) {
+    final shareText = "📢 ${ch.organization} Alımı / Takvimi: ${ch.title}!\n\n"
+        "Detaylar ve başvuru adresi: ${ch.officialUrl}\n\n"
+        "🔔 Hiçbir kamu ve KPSS sınavını kaçırmamak için KamuRadar uygulamasını Google Play'den indir:\n"
+        "https://play.google.com/store/apps/details?id=com.kamuradar.app";
+    Share.share(shareText, subject: ch.title);
+  }
+
+
+
+  Future<void> _loginWithGoogle() async {
+    try {
+      final user = await AuthService.signInWithGoogle();
+      if (user != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Hoş geldin, ${user.displayName}! 👋")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Giriş yapılamadı: $e")),
+        );
+      }
+    }
+  }
+
+  void _showUserMenu(User user) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+              child: user.photoURL == null ? const Icon(Icons.person, size: 30) : null,
+            ),
+            const SizedBox(height: 12),
+            Text(user.displayName ?? "Kullanıcı", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(user.email ?? "", style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.tune, color: AppTheme.primaryBlue),
+              title: const Text("Profil & Bildirim Ayarları", style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text("İlan alarm kotası ve uygulama tercihleri", style: TextStyle(fontSize: 11)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileSettingsScreen(
+                      isVip: _isUserVip,
+                      onUpgradeVip: () => setState(() => _isUserVip = true),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text("Çıkış Yap", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await AuthService.signOut();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Oturum kapatıldı.")),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   final List<ChannelAlarm> _channels = [
+
     ChannelAlarm(
       id: "ch-01",
       organization: "ÖSYM",
@@ -198,6 +353,26 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   int get _activeCount => _channels.where((c) => c.isAlarmActive).length;
 
   Future<void> _launchUrl(String url) async {
+    if (_effectiveVip) {
+      _directLaunchUrl(url);
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Resmî sayfaya yönlendiriliyorsunuz..."),
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    AdService.instance.showInterstitialAd(
+      onComplete: () {
+        _directLaunchUrl(url);
+      },
+    );
+  }
+
+  Future<void> _directLaunchUrl(String url) async {
     final uri = Uri.parse(url);
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -210,8 +385,136 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     }
   }
 
-  // 4 ALARM DOLUNCA AÇILAN VIP POP-UP
-  void _showVipPopUp() {
+  // 👑 VIP & PREMIUM İLAN KİLİDİ POP-UP'I (3 PAKETLİ)
+  void _showPremiumUpgradePopUp() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Colors.amber, Colors.orange]),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [BoxShadow(color: Colors.amber.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+              ),
+              child: const Icon(Icons.workspace_premium, color: Color(0xFF0F172A), size: 32),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.amber.shade300)),
+              child: const Text("👑 VIP ÖZEL İLAN & SINAV KİLİDİ", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF78350F))),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Tüm İlanların Kilidini Açın",
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "İlk 4 ilan ücretsizdir. Bu ilan ve diğer 16 kamu alımını görmek, alarmlarını açmak ve sıfır reklam deneyimi için paket seçin.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600, height: 1.4),
+            ),
+            const SizedBox(height: 18),
+
+            // 1. Paket: Yıllık VIP (En Popüler)
+            InkWell(
+              onTap: () {
+                Navigator.pop(ctx);
+                setState(() => _isUserVip = true);
+                widget.onUpgradeVip?.call();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("👑 Yıllık VIP Aile Planı Aktif! Tüm 20 ilanın kilidi açıldı ve reklamlar kaldırıldı.")),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E293B)]),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.amber, width: 2),
+                  boxShadow: [BoxShadow(color: Colors.amber.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 3))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(6)),
+                          child: const Text("👑 EN POPÜLER • %37 TASARRUF", style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                        ),
+                        const Text("299.99 ₺ / yıl", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.w900, fontSize: 13)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text("Yıllık VIP (4 Kişilik Aile Planı)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 2),
+                    const Text("1 Yıl boyunca tüm ilanlar açık, sıfır reklam, 3 arkadaş slotu ve sınırsız alarmlar.", style: TextStyle(color: Colors.white70, fontSize: 10)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // 2. Paket: Aylık VIP
+            InkWell(
+              onTap: () {
+                Navigator.pop(ctx);
+                setState(() => _isUserVip = true);
+                widget.onUpgradeVip?.call();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("👑 Aylık VIP Aile Planı Aktif! Tüm 20 ilanın kilidi açıldı.")),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Aylık VIP Aile Paketi (4 Kişi)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A))),
+                        SizedBox(height: 2),
+                        Text("Tüm kilitler açık, sıfır reklam, 3 arkadaş dahil.", style: TextStyle(fontSize: 10, color: Colors.black54)),
+                      ],
+                    ),
+                    Text("39.99 ₺ / ay", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Color(0xFF0F172A))),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Şimdilik Ücretsiz İlk 4 İlanla Devam Et", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // AYLIK BİLDİRİM KOTASI POP-UP'I (REKLAMLA YÜKSELEN BÖLÜM)
+  void _showNotificationQuotaPopUp() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -228,16 +531,18 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 color: Colors.amber.shade100,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.crown, color: Colors.amber, size: 30),
+              child: const Icon(Icons.notifications_active, color: Colors.amber, size: 30),
             ),
             const SizedBox(height: 12),
-            const Text(
-              "Ücretsiz Alarm Limiti Doldu (3 / 3)",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            Text(
+              _isUserVip ? "Sınırsız Bildirim (VIP)" : "Aylık Bildirim Kotası (Kalan: $_remainingNotifications / $_totalAllowedNotifications)",
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
             Text(
-              "Ücretsiz planda aynı anda en fazla 3 alım için alarm kurabilirsiniz. 4. alımı ve 20 sınav/alım takviminin tümünü kaçırmadan takip etmek için Aile Planını başlatın!",
+              _isUserVip
+                  ? "VIP üyeliğiniz sayesinde tüm kamu alımı ve sınav bildirimleri telefonunuza sınırsız olarak iletilir."
+                  : "Ücretsiz hesaplarda ayda 3 adet anlık bildirim alma hakkınız vardır. Reklam izleyerek anında +2 ek bildirim hakkı kazanabilirsiniz!",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.4),
             ),
@@ -245,10 +550,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.slate.shade50, borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(16)),
               child: const Column(
                 children: [
-                  Row(children: [Icon(Icons.check_circle, size: 16, color: Colors.green), SizedBox(width: 8), Text("Sınırsız alım için alarm kurma", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))]),
+                  Row(children: [Icon(Icons.check_circle, size: 16, color: Colors.green), SizedBox(width: 8), Text("Sınırsız kamu ve KPSS duyuru bildirimi", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))]),
                   SizedBox(height: 6),
                   Row(children: [Icon(Icons.check_circle, size: 16, color: Colors.green), SizedBox(width: 8), Text("Özel web sayfası izleme (URL Watcher)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))]),
                   SizedBox(height: 6),
@@ -256,20 +561,80 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            // Seçenek 1: Sınırsız VIP Satın Al
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 46,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F172A),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
                 onPressed: () {
                   Navigator.pop(ctx);
                   setState(() => _isUserVip = true);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("VIP Aktif! 4 alarm sınırı kalktı, sınırsız takip açıldı.")),
+                    const SnackBar(content: Text("👑 VIP Aktif! Sınırsız bildirim alımı açıldı.")),
                   );
                 },
-                child: const Text("39.99 ₺ ile Sınırsız VIP Yap (+3 Arkadaş)", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                child: const Text("39.99 ₺ ile Sınırsız VIP Yap (+3 Arkadaş)", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Seçenek 2: AdMob Ödüllü Reklam ile +2 Bildirim Hakkı Kazan
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF1E3A8A),
+                  side: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.play_circle_fill, color: Colors.blueAccent, size: 20),
+                label: const Text(
+                  "🎬 Kısa Reklam İzle (+2 Bildirim Hakkı Kazan)",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  AdService.instance.showRewardedAd(
+                    onStarted: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("🎬 Sponsorlu reklam yükleniyor ve oynatılıyor..."),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    onRewardEarned: () async {
+                      if (mounted) {
+                        final newBonus = _bonusNotifications + 2;
+                        await CacheService.saveBonusNotifications(newBonus);
+                        setState(() {
+                          _bonusNotifications = newBonus;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.green.shade700,
+                            content: Text("🎉 Video tamamlandı! +2 Bildirim Alma Hakkı tanımlandı (Yeni Limit: $_totalAllowedNotifications bildirim)."),
+                          ),
+                        );
+                      }
+                    },
+                    onFailure: (errorMessage) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppTheme.urgentRed,
+                            content: Text(errorMessage),
+                          ),
+                        );
+                      }
+                    },
+                  );
+                },
               ),
             ),
           ],
@@ -279,53 +644,104 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   }
 
   void _toggleChannelAlarm(ChannelAlarm channel) {
-    if (channel.isAlarmActive) {
-      setState(() {
-        channel.isAlarmActive = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("${channel.title} alarmı kapatıldı.")),
-      );
-    } else {
-      if (!_isUserVip && _activeCount >= _freeAlarmLimit) {
-        // 5. Alarm denemesi: POP-UP AÇILIR!
-        _showVipPopUp();
-        return;
-      }
-      setState(() {
-        channel.isAlarmActive = true;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("🔔 ${channel.title} alarmı kuruldu! Saat 12:00'de kontrol edilecek.")),
-      );
-    }
+    setState(() {
+      channel.isAlarmActive = !channel.isAlarmActive;
+    });
+    CacheService.saveActiveAlarms(
+      _channels.where((c) => c.isAlarmActive).map((c) => c.id).toList(),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(channel.isAlarmActive
+            ? "🔔 ${channel.title} radara eklendi! İlan çıktığında bildirim kotanızdan iletilecektir."
+            : "${channel.title} takibi kapatıldı."),
+      ),
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.bgSoft,
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.radar, color: AppTheme.primaryBlue, size: 22),
-            SizedBox(width: 8),
-            Text("KamuRadar", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+            const Icon(Icons.radar, color: AppTheme.primaryBlue, size: 22),
+            const SizedBox(width: 8),
+            const Text("KamuRadar", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+            if (_isOfflineMode)
+              const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(Icons.cloud_off, size: 15, color: Colors.amber),
+              ),
+            if (_isLoadingLive)
+              const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
           ],
         ),
         actions: [
+          StreamBuilder<User?>(
+            stream: AuthService.authStateChanges,
+            builder: (context, snapshot) {
+              final user = snapshot.data;
+              if (user != null) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: InkWell(
+                    onTap: () => _showUserMenu(user),
+                    child: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: Colors.blue.shade100,
+                      backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+                      child: user.photoURL == null
+                          ? Text(user.displayName?.substring(0, 1).toUpperCase() ?? "U",
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue))
+                          : null,
+                    ),
+                  ),
+                );
+              } else {
+                return IconButton(
+                  icon: const Icon(Icons.account_circle_outlined, color: AppTheme.primaryBlue),
+                  tooltip: "Google ile Giriş Yap",
+                  onPressed: _loginWithGoogle,
+                );
+              }
+            },
+          ),
           Padding(
-            padding: const EdgeInsets.only(right: 12.0),
+            padding: const EdgeInsets.only(right: 6.0),
             child: ActionChip(
+              avatar: Icon(Icons.notifications_active, size: 13, color: _isUserVip ? Colors.amber.shade900 : AppTheme.primaryBlue),
               label: Text(
-                _isUserVip ? "VIP Sınırsız" : "$_activeCount/$_freeAlarmLimit Alarm",
+                _isUserVip ? "VIP Sınırsız Bildirim" : "$_remainingNotifications Bildirim Hakkı",
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _isUserVip ? Colors.amber.shade900 : Colors.grey.shade800),
               ),
               backgroundColor: _isUserVip ? Colors.amber.shade100 : Colors.grey.shade200,
-              onPressed: () => setState(() => _isUserVip = !_isUserVip),
+              onPressed: _showNotificationQuotaPopUp,
             ),
-          )
+          ),
+          IconButton(
+            icon: const Icon(Icons.tune, color: AppTheme.primaryBlue, size: 20),
+            tooltip: "Profil & Ayarlar",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfileSettingsScreen(
+                    isVip: _isUserVip,
+                    onUpgradeVip: () => setState(() => _isUserVip = true),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
         ],
+
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -340,7 +756,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 children: [
                   const Text("Günde 1 Kez Toplu Tarama:", style: TextStyle(color: Colors.white70, fontSize: 11)),
                   Text(
-                    _isUserVip ? "VIP Sınırsız Mod (Saat 12:00)" : "Kota: $_activeCount / $_freeAlarmLimit Açık",
+                    _isUserVip ? "VIP Sınırsız Bildirim (12:00)" : "Kalan Bildirim: $_remainingNotifications / $_totalAllowedNotifications Hak",
                     style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 11),
                   ),
                 ],
@@ -380,8 +796,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 children: [
                   const Text("Takip & Alarm Kanalları", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   Text(
-                    _isUserVip ? "Sınırsız Takip (VIP)" : "$_activeCount / $_freeAlarmLimit Alarm Açık",
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _isUserVip ? Colors.green : Colors.amber.shade900),
+                    "$_activeCount Takvim Radarda Açık",
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
                   ),
                 ],
               ),
@@ -395,13 +811,14 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               itemCount: _channels.length,
               itemBuilder: (context, index) {
                 final ch = _channels[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
+                final isLocked = index >= 4 && !_effectiveVip;
+
+                final cardBody = Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: ch.isAlarmActive ? Colors.emerald.shade300 : AppTheme.borderSubtle),
+                    border: Border.all(color: ch.isAlarmActive ? Colors.green.shade400 : AppTheme.borderSubtle),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -415,18 +832,18 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                             avatar: Icon(
                               ch.isAlarmActive ? Icons.notifications_active : Icons.notifications_off_outlined,
                               size: 14,
-                              color: ch.isAlarmActive ? Colors.emerald.shade800 : Colors.grey,
+                              color: ch.isAlarmActive ? Colors.green.shade800 : Colors.grey,
                             ),
                             label: Text(
                               ch.isAlarmActive ? "Alarm Açık" : "Kapalı",
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: ch.isAlarmActive ? Colors.emerald.shade900 : Colors.grey.shade700,
+                                color: ch.isAlarmActive ? Colors.green.shade900 : Colors.grey.shade700,
                               ),
                             ),
-                            backgroundColor: ch.isAlarmActive ? Colors.emerald.shade50 : Colors.grey.shade100,
-                            onPressed: () => _toggleChannelAlarm(ch),
+                            backgroundColor: ch.isAlarmActive ? Colors.green.shade50 : Colors.grey.shade100,
+                            onPressed: isLocked ? null : () => _toggleChannelAlarm(ch),
                           ),
                         ],
                       ),
@@ -437,16 +854,93 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          const Text("Her gün 12:00 taranır", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                          TextButton.icon(
+                            icon: const Icon(Icons.share, size: 13, color: Color(0xFF25D366)),
+                            label: const Text("WhatsApp Paylaş", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF128C7E))),
+                            onPressed: isLocked ? null : () => _shareOnWhatsApp(ch),
+                          ),
                           const Spacer(),
                           TextButton.icon(
                             icon: const Icon(Icons.open_in_new, size: 12),
-                            label: const Text("Resmî Sayfaya Git", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                            onPressed: () => _launchUrl(ch.officialUrl),
+                            label: const Text("Resmî Sayfa", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            onPressed: isLocked ? null : () => _launchUrl(ch.officialUrl),
                           ),
                         ],
-                      )
+                      ),
                     ],
+                  ),
+                );
+
+                if (!isLocked) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: cardBody,
+                  );
+                }
+
+                // 5. İlandan İtibaren Buzlu (Blur) & Kilitli Kart
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        ImageFiltered(
+                          imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                          child: cardBody,
+                        ),
+                        Positioned.fill(
+                          child: Material(
+                            color: Colors.white.withValues(alpha: 0.65),
+                            child: InkWell(
+                              onTap: () {
+                                _showPremiumUpgradePopUp();
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.shade100,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.lock, color: Colors.amber, size: 20),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      "👑 Bu İlan VIP Üyelere Özeldir",
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    const Text(
+                                      "İlk 4 ilan ücretsizdir. Kalan 16 ilanın kilidini açmak için VIP'e geçin.",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(fontSize: 10, color: Colors.black54),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0F172A),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Text(
+                                        "Kilidi Aç (VIP)",
+                                        style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 10),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },

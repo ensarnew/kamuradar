@@ -32,3 +32,5 @@ class ExamScheduleItem {
     );
   }
 }
+
+typedef ExamSchedule = ExamScheduleItem;

@@ -12,6 +12,7 @@ class AppTheme {
   static const Color borderSubtle = Color(0xFFE2E8F0);
   static const Color successGreen = Color(0xFF10B981);
   static const Color urgentRed = Color(0xFFEF4444);
+  static const Color surfaceDark = Color(0xFF1E293B);
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -22,7 +23,6 @@ class AppTheme {
         seedColor: primaryBlue,
         primary: primaryBlue,
         secondary: amberGold,
-        background: bgSoft,
         surface: cardSurface,
       ),
       fontFamily: 'Roboto',
@@ -38,7 +38,7 @@ class AppTheme {
           fontWeight: FontWeight.w800,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: cardSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(

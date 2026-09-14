@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "23507411940",
+    "project_id": "kamuradar-1e9b2",
+    "storage_bucket": "kamuradar-1e9b2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:23507411940:android:8af05af6b1ffb732905df1",
+        "android_client_info": {
+          "package_name": "com.kamuradar.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "23507411940-5i2eivqrvefm9mk25fm7smievrsaou0n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kamuradar.app",
+            "certificate_hash": "9ffb567919da0113f858b61304d5bfd493458a3c"
+          }
+        },
+        {
+          "client_id": "23507411940-2g0ek9pinfl8bpdg0bssr454k5blk8fh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBozc76YregnSZYFZOTW6XGidki5yhSEV8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "23507411940-2g0ek9pinfl8bpdg0bssr454k5blk8fh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
