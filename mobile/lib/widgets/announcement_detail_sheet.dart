@@ -69,6 +69,20 @@ class AnnouncementDetailSheet extends StatefulWidget {
 
 class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
   bool _isFavorite = false;
+  bool _isAlarmActive = true;
+
+  void _toggleAlarm() {
+    setState(() {
+      _isAlarmActive = !_isAlarmActive;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isAlarmActive
+            ? "🔔 ${widget.item.position} için bildirim alarmı açıldı! Saat 12:00'de bildirim iletilecektir."
+            : "🔕 ${widget.item.position} takibi kapatıldı."),
+      ),
+    );
+  }
 
   Future<void> _handleApply() async {
     void openUrl() async {
@@ -423,6 +437,43 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
                     const SizedBox(height: 20),
 
                     // 5. Eylem Butonları
+                    // 🔔 [Bildirim Alarmı Aç / Kapat]
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isAlarmActive
+                              ? const Color(0xFF22C55E).withValues(alpha: 0.2)
+                              : const Color(0xFF0F244A),
+                          side: BorderSide(
+                            color: _isAlarmActive
+                                ? const Color(0xFF22C55E)
+                                : const Color(0xFFF59E0B),
+                            width: 1.2,
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                        icon: Icon(
+                          _isAlarmActive ? Icons.notifications_active : Icons.notifications_none,
+                          color: _isAlarmActive ? const Color(0xFF22C55E) : const Color(0xFFF59E0B),
+                          size: 20,
+                        ),
+                        label: Text(
+                          _isAlarmActive ? "Bildirim Alarmı Açık (Tıkla ve Kapat)" : "Bu İlanın Bildirim Alarmını Aç",
+                          style: TextStyle(
+                            color: _isAlarmActive ? const Color(0xFF22C55E) : const Color(0xFFF59E0B),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        onPressed: _toggleAlarm,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
                     // 🔵 [✉️ Başvuru Yap]
                     SizedBox(
                       width: double.infinity,

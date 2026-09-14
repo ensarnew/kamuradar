@@ -2108,15 +2108,38 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // Zil butonu
+                        // Belirgin Bildirim Açma Butonu
                         InkWell(
                           onTap: isLocked ? null : () => _toggleChannelAlarm(ch),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                            child: Icon(
-                              ch.isAlarmActive ? Icons.notifications_active : Icons.notifications_none,
-                              color: ch.isAlarmActive ? const Color(0xFF22C55E) : Colors.white38,
-                              size: 19,
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: ch.isAlarmActive ? const Color(0xFF22C55E).withValues(alpha: 0.2) : const Color(0xFF1E2F4D),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: ch.isAlarmActive ? const Color(0xFF22C55E) : const Color(0xFFF59E0B).withValues(alpha: 0.6),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  ch.isAlarmActive ? Icons.notifications_active : Icons.notifications_none,
+                                  color: ch.isAlarmActive ? const Color(0xFF22C55E) : const Color(0xFFF59E0B),
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  ch.isAlarmActive ? "Açık" : "Bildirim Aç",
+                                  style: TextStyle(
+                                    color: ch.isAlarmActive ? const Color(0xFF22C55E) : const Color(0xFFF59E0B),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
