@@ -9,25 +9,49 @@ import 'package:share_plus/share_plus.dart';
 import '../services/cache_service.dart';
 import '../services/ad_service.dart';
 import 'profile_settings_screen.dart';
-
-
+import '../widgets/announcement_detail_sheet.dart';
 
 class ChannelAlarm {
   final String id;
   final String organization;
   final String title;
+  final String position;
+  final String city;
+  final String date;
+  final String quota;
+  final String deadline;
+  final String applicationPlace;
+  final String employmentType;
+  final String applicationType;
+  final List<String> requirements;
   final String description;
   final String officialUrl;
+  final IconData logoIcon;
   bool isAlarmActive;
 
   ChannelAlarm({
     required this.id,
     required this.organization,
     required this.title,
+    String? position,
+    this.city = "Ankara",
+    this.date = "15.09.2025",
+    this.quota = "250",
+    this.deadline = "30.09.2025",
+    this.applicationPlace = "ÖSYM",
+    this.employmentType = "Sözleşmeli Personel",
+    this.applicationType = "Online Başvuru",
+    this.requirements = const [
+      "Türkiye Cumhuriyeti vatandaşı olmak.",
+      "Kamu haklarından mahrum bulunmamak.",
+      "Sağlık açısından görevini yapmasına engel bir durumu olmamak.",
+      "KPSS'den ilgili puan türünden en az 70 puan almak.",
+    ],
     required this.description,
     required this.officialUrl,
+    this.logoIcon = Icons.local_hospital,
     this.isAlarmActive = false,
-  });
+  }) : position = position ?? title;
 }
 
 class HomeFeedScreen extends StatefulWidget {
@@ -186,165 +210,257 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
 
   final List<ChannelAlarm> _channels = [
-
     ChannelAlarm(
-      id: "ch-01",
-      organization: "ÖSYM",
-      title: "2026-KPSS Lisans Başvuruları & Geç Başvuru",
-      description: "Genel Yetenek - Genel Kültür ve Eğitim Bilimleri sınav başvuru dönemi takibi.",
+      id: "ann-01",
+      organization: "Sağlık Bakanlığı",
+      title: "Sağlık Bakanlığı Hemşire Alımı",
+      position: "Hemşire Alımı",
+      city: "Ankara",
+      date: "15.09.2025",
+      quota: "250",
+      deadline: "30.09.2025",
+      applicationPlace: "ÖSYM",
+      employmentType: "Sözleşmeli Personel",
+      applicationType: "Online Başvuru",
+      requirements: const [
+        "Türkiye Cumhuriyeti vatandaşı olmak.",
+        "Kamu haklarından mahrum bulunmamak.",
+        "Sağlık açısından görevini yapmasına engel bir durumu olmamak.",
+        "KPSS'den ilgili puan türünden en az 70 puan almak.",
+        "Hemşirelik lisans veya önlisans programından mezun olmak.",
+      ],
+      description: "Sağlık Bakanlığı taşra ve merkez teşkilatı için 250 hemşire alımı ÖSYM KPSS-2025/5 tercih kılavuzuyla başladı.",
       officialUrl: "https://ais.osym.gov.tr",
-      isAlarmActive: true, // 1. Alarm
+      logoIcon: Icons.local_hospital,
+      isAlarmActive: true,
     ),
     ChannelAlarm(
-      id: "ch-02",
-      organization: "ÖSYM",
-      title: "2026-KPSS Lisans Sınav Sonuçları",
-      description: "Lisans ve Alan Bilgisi puanları ÖSYM Sonuç sisteminde açıklandığı an haber verir.",
-      officialUrl: "https://sonuc.osym.gov.tr",
-      isAlarmActive: true, // 2. Alarm
-    ),
-    ChannelAlarm(
-      id: "ch-03",
-      organization: "ÖSYM",
-      title: "2026-KPSS Önlisans Başvuru Takvimi",
-      description: "2 yıllık üniversite mezunları için başvuru kılavuzu ve banka ödeme tarihleri.",
-      officialUrl: "https://ais.osym.gov.tr",
-      isAlarmActive: false, // 3. Seçilebilir (Kota dolar)
-    ),
-    ChannelAlarm(
-      id: "ch-04",
-      organization: "ÖSYM",
-      title: "2026-KPSS Önlisans Sınav Sonuçları Açıklanması",
-      description: "KPSS Önlisans puanları ve branş sıralamaları açıklandığında anında bildirim.",
-      officialUrl: "https://sonuc.osym.gov.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-05",
-      organization: "ÖSYM",
-      title: "2026-KPSS Ortaöğretim (Lise Düzeyi) Başvuruları",
-      description: "Lise mezunları için 2 yılda bir yapılan genel KPSS başvuru dönemi takibi.",
-      officialUrl: "https://ais.osym.gov.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-06",
-      organization: "ÖSYM",
-      title: "2026-KPSS Ortaöğretim Sınav Sonuçları",
-      description: "Lise KPSS sınav sonuçları ve puan kartı sorgulama ekranı alarmları.",
-      officialUrl: "https://sonuc.osym.gov.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-07",
-      organization: "ÖSYM & MSB",
-      title: "2026-MSÜ Askeri Öğrenci Sınav Başvuruları",
-      description: "Harp Okulları ve Astsubay MYO askeri öğrenci belirleme sınav takvimi.",
-      officialUrl: "https://personeltemin.msb.gov.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-08",
-      organization: "Milli Savunma Bakanlığı",
-      title: "MSÜ Mülakat, Fiziki Parkur & Nihai Sonuçlar",
-      description: "2. seçim aşamaları çağrı listesi ve asil/yedek sonuç duyuruları.",
-      officialUrl: "https://personeltemin.msb.gov.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-09",
-      organization: "Polis Akademisi",
-      title: "32. Dönem POMEM Polis Memuru Alımı Başvuruları",
-      description: "10.000 polis alımı (lisans/önlisans) e-Devlet başvuru süreci alarmları.",
-      officialUrl: "https://www.pa.edu.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-10",
-      organization: "Polis Akademisi",
-      title: "POMEM Fiziki Parkur & Mülakat Sonuçları",
-      description: "Polislik fiziki parkur dereceleri ve mülakat sonuçları açıklandığı an haber verir.",
-      officialUrl: "https://www.pa.edu.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-11",
-      organization: "Polis Akademisi",
-      title: "PMYO Polis Meslek Yüksekokulu Başvuruları",
-      description: "Lise mezunları için üniversite düzeyinde yatılı polislik sınavı ve TYT taban puanı.",
-      officialUrl: "https://www.pa.edu.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-12",
-      organization: "Jandarma Genel K.",
-      title: "JSGA Subay ve Astsubay Temini Başvuruları",
-      description: "Jandarma ve Sahil Güvenlik Akademisi muvazzaf/sözleşmeli subay alımı.",
-      officialUrl: "https://vatandas.jandarma.gov.tr/PTM/Giris",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-13",
-      organization: "Jandarma Genel K.",
-      title: "Jandarma 2.500 Uzman Erbaş Alımı & Parkur",
-      description: "Komando, asayiş ve sıhhiye uzman erbaş alımı başvuru ve sonuç takibi.",
-      officialUrl: "https://vatandas.jandarma.gov.tr/PTM/Giris",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-14",
-      organization: "EGM / Polis Akademisi",
-      title: "Çarşı ve Mahalle Bekçiliği Alımları",
-      description: "İl bazlı bekçi alım kontenjanları, yazılı sınav ve mülakat duyuruları.",
-      officialUrl: "https://www.pa.edu.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-15",
-      organization: "Adalet Bakanlığı (PGM)",
-      title: "5.400 İKM, Zabıt Katibi & Mübaşir Alımı",
-      description: "Cezaevi infaz koruma, katiplik klavye uygulama sınavı ve mülakat listeleri.",
-      officialUrl: "https://pgm.adalet.gov.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-16",
-      organization: "Sağlık Bakanlığı (YHGM)",
-      title: "18.000 Sözleşmeli Sağlık Personeli & İşçi Alımı",
-      description: "Hemşire, tekniker ve sürekli işçi branş dağılımları ve tercih takvimi.",
-      officialUrl: "https://yhgm.saglik.gov.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-17",
+      id: "ann-02",
       organization: "Milli Eğitim Bakanlığı",
-      title: "20.000 Sözleşmeli Öğretmen Ataması & Tercihleri",
-      description: "Branş bazında kontenjanlar, mülakat takvimi ve sözleşmeli atama sonuçları.",
-      officialUrl: "https://personel.meb.gov.tr",
+      title: "MEB 20.000 Sözleşmeli Öğretmen Alımı",
+      position: "Sözleşmeli Öğretmen Alımı",
+      city: "Tüm Türkiye",
+      date: "14.09.2025",
+      quota: "20.000",
+      deadline: "28.09.2025",
+      applicationPlace: "MEB İlkatama",
+      employmentType: "Sözleşmeli Personel",
+      applicationType: "Online Başvuru",
+      requirements: const [
+        "Türkiye Cumhuriyeti vatandaşı olmak.",
+        "Kamu haklarından mahrum bulunmamak.",
+        "KPSS ilgili ÖABT alan puanından taban puanı geçmiş olmak.",
+        "Pedagojik formasyon ve ilgili öğretmenlik lisans diplomasına sahip olmak.",
+      ],
+      description: "Sınıf öğretmenliği, özel eğitim, İngilizce ve din kültürü başta olmak üzere 20.000 sözleşmeli öğretmen alım süreci.",
+      officialUrl: "https://ilkatama.meb.gov.tr",
+      logoIcon: Icons.school,
+      isAlarmActive: true,
+    ),
+    ChannelAlarm(
+      id: "ann-03",
+      organization: "Emniyet Genel Müdürlüğü",
+      title: "32. Dönem POMEM 10.000 Polis Memuru Alımı",
+      position: "Polis Memuru Alımı",
+      city: "Ankara",
+      date: "13.09.2025",
+      quota: "10.000",
+      deadline: "26.09.2025",
+      applicationPlace: "Polis Akademisi",
+      employmentType: "Emniyet Hizmetleri",
+      applicationType: "Online Başvuru",
+      requirements: const [
+        "Türkiye Cumhuriyeti vatandaşı olmak.",
+        "30 yaşından gün almamış olmak.",
+        "Lisans için KPSS P3 en az 60, önlisans için KPSS P93 en az 65 almak.",
+        "Emniyet Teşkilatı Sağlık Şartları Yönetmeliğinde belirtilen fiziki koşulları taşımak.",
+      ],
+      description: "8.000 lisans ve 2.000 önlisans mezunu adaylar arasından POMEM polis memuru alımı fiziki yeterlilik parkuru ve başvuru süreci.",
+      officialUrl: "https://www.pa.edu.tr",
+      logoIcon: Icons.shield,
       isAlarmActive: false,
     ),
     ChannelAlarm(
-      id: "ch-18",
+      id: "ann-04",
+      organization: "Tarım ve Orman Bakanlığı",
+      title: "Tarım ve Orman Bakanlığı 1.500 Büro Personeli Alımı",
+      position: "Büro Personeli Alımı",
+      city: "Tüm Türkiye",
+      date: "12.09.2025",
+      quota: "1.500",
+      deadline: "26.09.2025",
+      applicationPlace: "Kariyer Kapısı",
+      employmentType: "Sözleşmeli Personel",
+      applicationType: "e-Devlet Üzerinden",
+      requirements: const [
+        "Türkiye Cumhuriyeti vatandaşı olmak.",
+        "Kamu haklarından mahrum bulunmamak.",
+        "İktisat, işletme veya büro yönetimi lisans/önlisans mezunu olmak.",
+        "KPSS P3 veya P93 puan türünden en az 70 puan almış olmak.",
+      ],
+      description: "Tarım ve Orman Bakanlığı ile OGM bünyesinde istihdam edilmek üzere 1.500 büro personeli alımı.",
+      officialUrl: "https://www.tarimorman.gov.tr",
+      logoIcon: Icons.park,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "ann-05",
+      organization: "Adalet Bakanlığı",
+      title: "Adalet Bakanlığı 12.500 Zabıt Katibi & İKM Alımı",
+      position: "Zabıt Katibi Alımı",
+      city: "Ankara",
+      date: "11.09.2025",
+      quota: "12.500",
+      deadline: "28.09.2025",
+      applicationPlace: "Adalet Bakanlığı (PGM)",
+      employmentType: "Sözleşmeli Personel",
+      applicationType: "e-Devlet Üzerinden",
+      requirements: const [
+        "Türkiye Cumhuriyeti vatandaşı olmak.",
+        "35 yaşını bitirmemiş olmak.",
+        "Uygulamalı klavye sınavında 3 dakikada en az 90 doğru kelime yazmak.",
+        "KPSS en az 70 taban puan almış olmak.",
+      ],
+      description: "Adliyeler ve Ceza İnfaz Kurumları için KPSS 70 taban puanla zabıt katibi, mübaşir ve infaz koruma memuru alımı.",
+      officialUrl: "https://pgm.adalet.gov.tr",
+      logoIcon: Icons.gavel,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "ann-06",
+      organization: "Belediye",
+      title: "İstanbul ve Ankara Belediyeleri Temizlik İşçisi Alımı",
+      position: "İşçi Alımı (Temizlik Görevlisi)",
+      city: "İstanbul",
+      date: "10.09.2025",
+      quota: "500",
+      deadline: "22.09.2025",
+      applicationPlace: "İŞKUR / Belediye",
+      employmentType: "Sürekli İşçi",
+      applicationType: "Online Başvuru",
+      requirements: const [
+        "Türkiye Cumhuriyeti vatandaşı olmak.",
+        "En az ilkokul mezunu olmak.",
+        "Vardiyalı ve açık alanda çalışmaya engel sağlık sorunu bulunmamak.",
+        "İlgili il sınırları içinde ikamet ediyor olmak.",
+      ],
+      description: "Büyükşehir belediyeleri ve bağlı iştirakler bünyesinde görevlendirilmek üzere 500 temizlik personeli sürekli işçi alımı.",
+      officialUrl: "https://www.turkiye.gov.tr",
+      logoIcon: Icons.location_city,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "ann-07",
+      organization: "Jandarma Genel K.",
+      title: "Jandarma 2.500 Uzman Erbaş Alımı",
+      position: "Uzman Erbaş Alımı",
+      city: "Tüm Türkiye",
+      date: "09.09.2025",
+      quota: "2.500",
+      deadline: "28.09.2025",
+      applicationPlace: "Jandarma PTM",
+      employmentType: "Uzman Erbaş",
+      applicationType: "Online Başvuru",
+      requirements: const [
+        "Türkiye Cumhuriyeti vatandaşı ve erkek olmak.",
+        "27 yaşını bitirmemiş olmak.",
+        "En az lise ve dengi okul mezunu olmak.",
+        "Askerlik ve sağlık şartlarını eksiksiz taşımak.",
+      ],
+      description: "Asayiş, komando ve sıhhiye branşlarında en az lise mezunu uzman erbaş temin süreci.",
+      officialUrl: "https://vatandas.jandarma.gov.tr/PTM/Giris",
+      logoIcon: Icons.military_tech,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "ann-08",
+      organization: "Milli Savunma Bakanlığı",
+      title: "MSÜ Askeri Öğrenci & Subay Alımı",
+      position: "Subay / Astsubay Alımı",
+      city: "Ankara",
+      date: "08.09.2025",
+      quota: "3.200",
+      deadline: "05.10.2025",
+      applicationPlace: "MSB Personel Temin",
+      employmentType: "Muvazzaf Askeri Personel",
+      applicationType: "Online Başvuru",
+      requirements: const [
+        "Türkiye Cumhuriyeti vatandaşı olmak.",
+        "Harp Okulları için 20, Astsubay MYO için 21 yaşından büyük olmamak.",
+        "MSÜ ve YKS baraj puanını sağlamış olmak.",
+        "Fiziki yeterlilik parkuru ve mülakat aşamalarını geçmek.",
+      ],
+      description: "Kara, Deniz, Hava Harp Okulları ile Astsubay Meslek Yüksekokulları askeri öğrenci ve subay aday belirleme süreci.",
+      officialUrl: "https://personeltemin.msb.gov.tr",
+      logoIcon: Icons.military_tech,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "ann-09",
+      organization: "Gelir İdaresi Başkanlığı",
+      title: "1.271 Gelir Uzman Yardımcısı (GUY) Alımı",
+      position: "Gelir Uzman Yardımcısı (GUY)",
+      city: "Ankara",
+      date: "07.09.2025",
+      quota: "1.271",
+      deadline: "30.09.2025",
+      applicationPlace: "GİB Sınav Portalı",
+      employmentType: "Kariyer Meslek Memuru",
+      applicationType: "Online Başvuru",
+      requirements: const [
+        "İİBF, SBF veya Hukuk fakültesi mezunu olmak.",
+        "35 yaşını doldurmamış olmak.",
+        "KPSS A Grubu ilgili puan türlerinden en az 70 almak.",
+        "Yazılı ve sözlü sınavda başarılı olmak.",
+      ],
+      description: "Hazine ve Maliye Bakanlığı Gelir İdaresi Başkanlığı bünyesinde 1.271 Gelir Uzman Yardımcısı istihdam edilecektir.",
+      officialUrl: "https://www.gib.gov.tr",
+      logoIcon: Icons.trending_up,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "ann-10",
+      organization: "İŞKUR",
+      title: "MEB 40.000 Okul Güvenlik & Temizlik (TYP)",
+      position: "TYP Güvenlik & Temizlik",
+      city: "Tüm Türkiye",
+      date: "06.09.2025",
+      quota: "40.000",
+      deadline: "24.09.2025",
+      applicationPlace: "İŞKUR e-Şube",
+      employmentType: "Toplum Yararına Program",
+      applicationType: "Online Başvuru",
+      requirements: const [
+        "İŞKUR'a kayıtlı işsiz olmak.",
+        "18 yaşını tamamlamış olmak.",
+        "Emekli ve malul aylığı almamak.",
+        "Hane geliri asgari ücretin 1.5 katını aşmamak.",
+      ],
+      description: "81 il milli eğitim müdürlüklerine bağlı okullarda görev yapacak 40.000 temizlik ve güvenlik görevlisi alımı.",
+      officialUrl: "https://esube.iskur.gov.tr",
+      logoIcon: Icons.work,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "ann-11",
       organization: "ÖSYM",
-      title: "2026-DGS Dikey Geçiş Başvuru & Tercih Sonuçları",
-      description: "Önlisanstan lisansa geçiş sınavı başvuru, taban puan ve yerleştirme takvimi.",
+      title: "2026-KPSS Lisans & Önlisans Takvimi",
+      position: "2026-KPSS Başvuru Takvimi",
+      city: "Tüm Türkiye",
+      date: "05.09.2025",
+      quota: "Genel Sınav",
+      deadline: "02.10.2025",
+      applicationPlace: "ÖSYM AİS",
+      employmentType: "Kamu Personel Sınavı",
+      applicationType: "AİS Online Başvuru",
+      requirements: const [
+        "Türkiye Cumhuriyeti vatandaşı veya mavi kart sahibi olmak.",
+        "Lisans veya önlisans programından mezun veya mezun olabilir durumda olmak.",
+        "ÖSYM AİS şifresine veya e-Devlet girişine sahip olmak.",
+      ],
+      description: "KPSS Lisans ve Önlisans sınav başvuru ve sonuç takibi.",
       officialUrl: "https://ais.osym.gov.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-19",
-      organization: "ÖSYM",
-      title: "2026-ALES / 1 ve ALES / 2 Akademik Sınav Takvimi",
-      description: "Yüksek lisans ve akademik kadro başvuruları için ALES sınav & sonuç takvimi.",
-      officialUrl: "https://ais.osym.gov.tr",
-      isAlarmActive: false,
-    ),
-    ChannelAlarm(
-      id: "ch-20",
-      organization: "Gençlik ve Spor Bakanlığı",
-      title: "GSB Yurt Yönetim Personeli & Gençlik Lideri",
-      description: "GSB taşra teşkilatı büro personeli ve yurt yönetim memuru alım duyuruları.",
-      officialUrl: "https://pgm.gsb.gov.tr",
+      logoIcon: Icons.assignment,
       isAlarmActive: false,
     ),
   ];
@@ -813,61 +929,135 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 final ch = _channels[index];
                 final isLocked = index >= 4 && !_effectiveVip;
 
-                final cardBody = Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: ch.isAlarmActive ? Colors.green.shade400 : AppTheme.borderSubtle),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(ch.organization, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
-                          // Zil Aç/Kapat Butonu
-                          ActionChip(
-                            avatar: Icon(
-                              ch.isAlarmActive ? Icons.notifications_active : Icons.notifications_off_outlined,
-                              size: 14,
-                              color: ch.isAlarmActive ? Colors.green.shade800 : Colors.grey,
-                            ),
-                            label: Text(
-                              ch.isAlarmActive ? "Alarm Açık" : "Kapalı",
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: ch.isAlarmActive ? Colors.green.shade900 : Colors.grey.shade700,
+                final cardBody = InkWell(
+                  onTap: () {
+                    AnnouncementDetailSheet.show(
+                      context,
+                      AnnouncementDetailData(
+                        id: ch.id,
+                        organization: ch.organization,
+                        title: ch.title,
+                        position: ch.position,
+                        city: ch.city,
+                        date: ch.date,
+                        quota: ch.quota,
+                        applicationPlace: ch.applicationPlace,
+                        employmentType: ch.employmentType,
+                        applicationType: ch.applicationType,
+                        requirements: ch.requirements,
+                        officialUrl: ch.officialUrl,
+                        status: "Açık",
+                        logoIcon: ch.logoIcon,
+                      ),
+                      isVip: _effectiveVip,
+                    );
+                  },
+                  onLongPress: isLocked ? null : () => _shareOnWhatsApp(ch),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF131E33),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: ch.isAlarmActive ? const Color(0xFF22C55E).withValues(alpha: 0.6) : const Color(0xFF1E2D4A),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // Beyaz dairesel logo kapsülü
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            ch.logoIcon,
+                            color: const Color(0xFFDC2626), // Kırmızı amblem tonu
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Kurum, Pozisyon ve Lokasyon/Tarih Bilgisi
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                ch.organization,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
+                              const SizedBox(height: 2),
+                              Text(
+                                ch.position,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on, size: 11, color: Colors.white54),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    ch.city,
+                                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Icon(Icons.access_time, size: 11, color: Colors.white54),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    ch.date,
+                                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Zil butonu
+                        InkWell(
+                          onTap: isLocked ? null : () => _toggleChannelAlarm(ch),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: Icon(
+                              ch.isAlarmActive ? Icons.notifications_active : Icons.notifications_none,
+                              color: ch.isAlarmActive ? const Color(0xFF22C55E) : Colors.white38,
+                              size: 19,
                             ),
-                            backgroundColor: ch.isAlarmActive ? Colors.green.shade50 : Colors.grey.shade100,
-                            onPressed: isLocked ? null : () => _toggleChannelAlarm(ch),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(ch.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      const SizedBox(height: 4),
-                      Text(ch.description, style: const TextStyle(fontSize: 11, color: Colors.black54)),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          TextButton.icon(
-                            icon: const Icon(Icons.share, size: 13, color: Color(0xFF25D366)),
-                            label: const Text("WhatsApp Paylaş", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF128C7E))),
-                            onPressed: isLocked ? null : () => _shareOnWhatsApp(ch),
+                        ),
+                        const SizedBox(width: 4),
+                        // "Açık" yeşil hap rozet
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF22C55E),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          const Spacer(),
-                          TextButton.icon(
-                            icon: const Icon(Icons.open_in_new, size: 12),
-                            label: const Text("Resmî Sayfa", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                            onPressed: isLocked ? null : () => _launchUrl(ch.officialUrl),
+                          child: const Text(
+                            "Açık",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right, color: Colors.white54, size: 18),
+                      ],
+                    ),
                   ),
                 );
 

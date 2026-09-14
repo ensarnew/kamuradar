@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'screens/home_feed_screen.dart';
 
-import 'screens/open_announcements_screen.dart';
 import 'screens/custom_watcher_screen.dart';
 import 'screens/family_subscription_screen.dart';
 import 'screens/profile_settings_screen.dart';
@@ -58,7 +57,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   void _upgradeToVip() {
     setState(() {
-      _currentIndex = 3; // Aile Planı sekmesine yönlendir
+      _currentIndex = 2; // Aile Planı sekmesine yönlendir (Açık İlanlar kaldırıldığı için indeks 2)
     });
   }
 
@@ -68,10 +67,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       HomeFeedScreen(
         isVip: _isVip,
         onUpgradeVip: _upgradeToVip,
-      ),
-      OpenAnnouncementsScreen(
-        isVip: _isVip,
-        onUpgrade: _upgradeToVip,
       ),
       const CustomWatcherScreen(),
       FamilySubscriptionScreen(
@@ -102,22 +97,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.notifications_active_outlined),
-            selectedIcon: Icon(Icons.notifications_active, color: AppTheme.primaryBlue),
-            label: 'Alarm Radarı',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              label: Text("VIP", style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold)),
-              backgroundColor: AppTheme.amberGold,
-              child: Icon(Icons.campaign_outlined),
-            ),
-            selectedIcon: Badge(
-              label: Text("VIP", style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold)),
-              backgroundColor: AppTheme.amberGold,
-              child: Icon(Icons.campaign, color: AppTheme.primaryBlue),
-            ),
-            label: 'Açık İlanlar',
+            icon: Icon(Icons.radar_outlined),
+            selectedIcon: Icon(Icons.radar, color: AppTheme.primaryBlue),
+            label: 'İlan Radarı',
           ),
           NavigationDestination(
             icon: Icon(Icons.language_outlined),
