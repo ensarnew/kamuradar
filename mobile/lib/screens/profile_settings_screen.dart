@@ -273,7 +273,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFF131E33),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppTheme.borderSubtle),
             boxShadow: [
@@ -381,7 +381,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF131E33),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.borderSubtle),
       ),
@@ -412,7 +412,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           // Kota Barı
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(14)),
             child: Column(
               children: [
                 Row(
@@ -481,7 +481,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF131E33),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.borderSubtle),
       ),
@@ -510,7 +510,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(12)),
             child: Row(
               children: [
                 const Icon(Icons.info_outline, size: 16, color: AppTheme.primaryBlue),
@@ -543,7 +543,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF131E33),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.borderSubtle),
       ),
@@ -625,7 +625,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF131E33),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.borderSubtle),
       ),
@@ -697,7 +697,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF131E33),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.borderSubtle),
       ),

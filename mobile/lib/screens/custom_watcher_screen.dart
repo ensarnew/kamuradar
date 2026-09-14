@@ -93,24 +93,24 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
             Container(
               width: 70,
               height: 70,
-              decoration: BoxDecoration(color: Colors.amber.shade50, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.15), shape: BoxShape.circle),
               child: const Icon(Icons.lock, size: 36, color: Colors.amber),
             ),
             const SizedBox(height: 16),
             const Text(
               "Özel Web Sitesi Takibi VIP Özelliktir",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               "İstediğiniz kamu veya üniversite duyuru sayfasının linkini ekleyin. Sistemimiz bu linki her gün saat 12:00'de otomatik tarar ve yeni bir duyuru algılandığında anında bildirim gönderir.",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.4),
+              style: TextStyle(fontSize: 12, color: Colors.white70, height: 1.4),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B)),
               onPressed: () => setState(() => _isUserVip = true),
               child: const Text("39.99 ₺ ile Premium Başlat (+3 Arkadaş)", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
             ),

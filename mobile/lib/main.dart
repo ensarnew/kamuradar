@@ -85,38 +85,43 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         isVip: _isVip,
         onUpgradeRequested: _upgradeToVip,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        indicatorColor: AppTheme.primaryBlue.withValues(alpha: 0.12),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        onDestinationSelected: (idx) {
-          setState(() {
-            _currentIndex = idx;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.radar_outlined),
-            selectedIcon: Icon(Icons.radar, color: AppTheme.primaryBlue),
-            label: 'İlan Radarı',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.language_outlined),
-            selectedIcon: Icon(Icons.language, color: AppTheme.primaryBlue),
-            label: 'Özel Linkler',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.workspace_premium_outlined),
-            selectedIcon: Icon(Icons.workspace_premium, color: AppTheme.amberGold),
-            label: 'Aile Planı',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.tune_outlined),
-            selectedIcon: Icon(Icons.tune, color: AppTheme.primaryBlue),
-            label: 'Profil & Ayar',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Color(0xFF1E2D4A), width: 1)),
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          indicatorColor: const Color(0xFF1E3A8A),
+          backgroundColor: const Color(0xFF0F172A),
+          elevation: 2,
+          onDestinationSelected: (idx) {
+            setState(() {
+              _currentIndex = idx;
+            });
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.radar_outlined, color: Color(0xFF94A3B8)),
+              selectedIcon: Icon(Icons.radar, color: Color(0xFF38BDF8)),
+              label: 'İlan Radarı',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.language_outlined, color: Color(0xFF94A3B8)),
+              selectedIcon: Icon(Icons.language, color: Color(0xFF38BDF8)),
+              label: 'Özel Linkler',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.workspace_premium_outlined, color: Color(0xFF94A3B8)),
+              selectedIcon: Icon(Icons.workspace_premium, color: AppTheme.amberGold),
+              label: 'Aile Planı',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.tune_outlined, color: Color(0xFF94A3B8)),
+              selectedIcon: Icon(Icons.tune, color: Color(0xFF38BDF8)),
+              label: 'Profil & Ayar',
+            ),
+          ],
+        ),
       ),
     );
   }

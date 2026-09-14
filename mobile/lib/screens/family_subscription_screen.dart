@@ -34,12 +34,11 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     }
   }
 
-  // 1. Aboneliği Satın Al (Aylık, Yıllık veya Reklam Kaldır)
+  // 1. Aboneliği Satın Al (Aylık veya Yıllık)
   void _buySubscription() {
     final planNames = [
       "Aylık VIP (39.99 ₺)",
       "Yıllık Avantajlı VIP (299.99 ₺)",
-      "Ömür Boyu Reklam Kaldır (99.99 ₺)"
     ];
     setState(() {
       _isPlanPurchased = true;
@@ -52,7 +51,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     widget.onPlanPurchased?.call();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("${planNames[_selectedPlanIndex]} aktif edildi! Tüm reklamlar kaldırıldı ve 20 ilanın kilidi açıldı."),
+        content: Text("${planNames[_selectedPlanIndex]} aktif edildi! Tüm reklamlar kaldırıldı ve 54 ilanın kilidi açıldı."),
       ),
     );
   }
@@ -105,10 +104,10 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFF091122),
       appBar: AppBar(
-        title: const Text("Premium & Aile Paketi", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: const Text("Premium & Aile Paketi", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF0F172A),
         elevation: 0.5,
       ),
       body: SingleChildScrollView(
@@ -122,7 +121,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Avantajlı Paket Seçin", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                  const Text("Avantajlı Paket Seçin", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
                   const SizedBox(height: 10),
 
                   // 1. Plan: Yıllık VIP (En Popüler)
@@ -131,10 +130,10 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: _selectedPlanIndex == 1 ? const Color(0xFF0F172A) : Colors.white,
+                        color: _selectedPlanIndex == 1 ? const Color(0xFF0F172A) : const Color(0xFF131E33),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: _selectedPlanIndex == 1 ? Colors.amber : Colors.grey.shade300,
+                          color: _selectedPlanIndex == 1 ? Colors.amber : const Color(0xFF1E2D4A),
                           width: _selectedPlanIndex == 1 ? 2 : 1,
                         ),
                         boxShadow: _selectedPlanIndex == 1 ? [BoxShadow(color: Colors.amber.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))] : null,
@@ -198,10 +197,10 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: _selectedPlanIndex == 0 ? const Color(0xFF0F172A) : Colors.white,
+                        color: _selectedPlanIndex == 0 ? const Color(0xFF0F172A) : const Color(0xFF131E33),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: _selectedPlanIndex == 0 ? Colors.amber : Colors.grey.shade300,
+                          color: _selectedPlanIndex == 0 ? Colors.amber : const Color(0xFF1E2D4A),
                           width: _selectedPlanIndex == 0 ? 2 : 1,
                         ),
                       ),
@@ -221,13 +220,13 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
-                                    color: _selectedPlanIndex == 0 ? Colors.white : Colors.black87,
+                                    color: _selectedPlanIndex == 0 ? Colors.white : Colors.white70,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  "Aylık yenilenir. 20 ilan açık, sınırsız bildirim, sıfır reklam, 3 arkadaş.",
-                                  style: TextStyle(fontSize: 10, color: _selectedPlanIndex == 0 ? Colors.white70 : Colors.grey.shade600),
+                                  "Aylık yenilenir. 54 ilan açık, sınırsız bildirim, sıfır reklam, 3 arkadaş.",
+                                  style: TextStyle(fontSize: 10, color: _selectedPlanIndex == 0 ? Colors.white70 : Colors.grey.shade400),
                                 ),
                               ],
                             ),
@@ -238,7 +237,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w900,
-                              color: _selectedPlanIndex == 0 ? Colors.amber : const Color(0xFF0F172A),
+                              color: _selectedPlanIndex == 0 ? Colors.amber : Colors.white,
                             ),
                           ),
                         ],
@@ -339,9 +338,9 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF131E33),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: const Color(0xFF1E2D4A)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
