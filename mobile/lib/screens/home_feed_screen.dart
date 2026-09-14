@@ -24,10 +24,25 @@ class ChannelAlarm {
   final String employmentType;
   final String applicationType;
   final List<String> requirements;
+  final String status;
   final String description;
   final String officialUrl;
   final IconData logoIcon;
   bool isAlarmActive;
+
+  Color get statusColor {
+    switch (status) {
+      case "Açık":
+        return const Color(0xFF22C55E); // Yeşil
+      case "Yakında":
+        return const Color(0xFF3B82F6); // Mavi
+      case "Sonuç":
+        return const Color(0xFFEF4444); // Kırmızı
+      case "Kapalı":
+      default:
+        return const Color(0xFF64748B); // Gri
+    }
+  }
 
   ChannelAlarm({
     required this.id,
@@ -41,6 +56,7 @@ class ChannelAlarm {
     this.applicationPlace = "ÖSYM",
     this.employmentType = "Sözleşmeli Personel",
     this.applicationType = "Online Başvuru",
+    this.status = "Açık",
     this.requirements = const [
       "Türkiye Cumhuriyeti vatandaşı olmak.",
       "Kamu haklarından mahrum bulunmamak.",
@@ -306,6 +322,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     ChannelAlarm(
       id: "ann-05",
       organization: "Adalet Bakanlığı",
+      status: "Yakında",
       title: "Adalet Bakanlığı 12.500 Zabıt Katibi & İKM Alımı",
       position: "Zabıt Katibi Alımı",
       city: "Ankara",
@@ -329,6 +346,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     ChannelAlarm(
       id: "ann-06",
       organization: "Belediye",
+      status: "Yakında",
       title: "İstanbul ve Ankara Belediyeleri Temizlik İşçisi Alımı",
       position: "İşçi Alımı (Temizlik Görevlisi)",
       city: "İstanbul",
@@ -352,6 +370,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     ChannelAlarm(
       id: "ann-07",
       organization: "Jandarma Genel K.",
+      status: "Sonuç",
       title: "Jandarma 2.500 Uzman Erbaş Alımı",
       position: "Uzman Erbaş Alımı",
       city: "Tüm Türkiye",
@@ -375,6 +394,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     ChannelAlarm(
       id: "ann-08",
       organization: "Milli Savunma Bakanlığı",
+      status: "Sonuç",
       title: "MSÜ Askeri Öğrenci & Subay Alımı",
       position: "Subay / Astsubay Alımı",
       city: "Ankara",
@@ -398,6 +418,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     ChannelAlarm(
       id: "ann-09",
       organization: "Gelir İdaresi Başkanlığı",
+      status: "Yakında",
       title: "1.271 Gelir Uzman Yardımcısı (GUY) Alımı",
       position: "Gelir Uzman Yardımcısı (GUY)",
       city: "Ankara",
@@ -421,6 +442,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     ChannelAlarm(
       id: "ann-10",
       organization: "İŞKUR",
+      status: "Kapalı",
       title: "MEB 40.000 Okul Güvenlik & Temizlik (TYP)",
       position: "TYP Güvenlik & Temizlik",
       city: "Tüm Türkiye",
@@ -444,6 +466,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     ChannelAlarm(
       id: "ann-11",
       organization: "ÖSYM",
+      status: "Sonuç",
       title: "2026-KPSS Lisans & Önlisans Takvimi",
       position: "2026-KPSS Başvuru Takvimi",
       city: "Tüm Türkiye",
@@ -779,8 +802,12 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.bgSoft,
+      backgroundColor: const Color(0xFF091122),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF0F172A),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
         title: Row(
           children: [
             const Icon(Icons.radar, color: AppTheme.primaryBlue, size: 22),
@@ -946,7 +973,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                         applicationType: ch.applicationType,
                         requirements: ch.requirements,
                         officialUrl: ch.officialUrl,
-                        status: "Açık",
+                        status: ch.status,
                         logoIcon: ch.logoIcon,
                       ),
                       isVip: _effectiveVip,
@@ -1038,16 +1065,16 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        // "Açık" yeşil hap rozet
+                        // Durum rozeti (Açık, Yakında, Sonuç, Kapalı)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF22C55E),
+                            color: ch.statusColor,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            "Açık",
-                            style: TextStyle(
+                          child: Text(
+                            ch.status,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.w900,

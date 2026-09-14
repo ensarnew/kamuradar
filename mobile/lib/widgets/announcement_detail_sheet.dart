@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/ad_service.dart';
 
 class AnnouncementDetailData {
@@ -90,6 +91,43 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
       );
     } else {
       openUrl();
+    }
+  }
+
+  Color get _statusColor {
+    switch (widget.item.status) {
+      case "Açık":
+        return const Color(0xFF22C55E); // Yeşil
+      case "Yakında":
+        return const Color(0xFF3B82F6); // Mavi
+      case "Sonuç":
+        return const Color(0xFFEF4444); // Kırmızı
+      case "Kapalı":
+      default:
+        return const Color(0xFF64748B); // Gri
+    }
+  }
+
+  Future<void> _shareOnWhatsApp() async {
+    final item = widget.item;
+    final shareText = "📢 ${item.organization} - ${item.position}!\n\n"
+        "👥 Kadro Sayısı: ${item.quota}\n"
+        "📅 Son Başvuru: ${item.date}\n"
+        "🏛️ Başvuru Yeri: ${item.applicationPlace}\n\n"
+        "🔗 Resmî Başvuru Adresi:\n${item.officialUrl}\n\n"
+        "🔔 Tüm kamu alımlarını ve KPSS takvimini anında takip etmek için KamuRadar'ı indir:\n"
+        "https://play.google.com/store/apps/details?id=com.kamuradar.app";
+
+    final whatsappUrl = "whatsapp://send?text=${Uri.encodeComponent(shareText)}";
+    final uri = Uri.parse(whatsappUrl);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await Share.share(shareText, subject: item.position);
+      }
+    } catch (_) {
+      await Share.share(shareText, subject: item.position);
     }
   }
 
@@ -219,11 +257,11 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
                               ],
                             ),
                           ),
-                          // "Açık" yeşil hap rozeti
+                          // Durum rozeti (Açık, Yakında, Sonuç, Kapalı)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF22C55E),
+                              color: _statusColor,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -404,6 +442,33 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
                             Text(
                               "Başvuru Yap",
                               style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // 🟢 [💬 WhatsApp'ta Paylaş] (Doğrudan WhatsApp Kişi Seçimini Açar)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366), // WhatsApp yeşili
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 2,
+                        ),
+                        onPressed: _shareOnWhatsApp,
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              "WhatsApp'ta Paylaş",
+                              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
                             ),
                           ],
                         ),
