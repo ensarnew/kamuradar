@@ -79,8 +79,8 @@ class Daily12PMScheduler:
         # 2. Premium Özel Linkleri Tara
         updated_custom_links = []
         for watcher_id, watcher in db.custom_watchers.items():
-            # Eğer simüle edilen yeni içerik verilmişse onu kontrol et, yoksa mevcut içeriği tara
-            incoming_content = simulated_html_changes.get(watcher_id, f"İçerik sayfası - {watcher.label}")
+            # Eğer simüle edilen test içeriği yoksa doğrudan canlı sayfayı tara
+            incoming_content = simulated_html_changes.get(watcher_id, None)
             has_update, message = CustomUrlWatcherService.scan_watcher_12pm(watcher, incoming_content)
             if has_update:
                 updated_custom_links.append({
