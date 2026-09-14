@@ -151,29 +151,59 @@ class _RadarAISheetState extends State<RadarAISheet> {
   Map<String, String?> _generateAiReply(String msg) {
     final lower = msg.toLowerCase();
 
-    if (lower.contains("jandarma") || lower.contains("uzman")) {
+    if (lower.contains("tarım") || lower.contains("tarim") || lower.contains("orman") || lower.contains("ogm")) {
+      return {
+        "reply": "🌲 Tarım ve Orman Bakanlığı & OGM Alımları:\n• Kadrolar: Orman Muhafaza Memuru, yangın söndürme işçisi, veteriner hekim, ziraat mühendisi.\n• Başvuru Kanalı: Cumhurbaşkanlığı Kariyer Kapısı ve ÖSYM KPSS merkezi atamaları.\n• Resmî Portallar:\n- Bakanlık: https://www.tarimorman.gov.tr\n- OGM: https://www.ogm.gov.tr",
+        "url": "https://www.tarimorman.gov.tr"
+      };
+    } else if (lower.contains("itfaiye") || lower.contains("itfaye") || lower.contains("zabıta") || lower.contains("zabita") || lower.contains("belediye")) {
+      return {
+        "reply": "🚒 Belediye İtfaiye Eri & Zabıta Memuru Alımları:\n• Şartlar: Kadınlarda en az 160 cm, erkeklerde en az 167 cm boy (Boy-kilo indeksi uygunluğu).\n• Süreç: KPSS ilgili puan türü + Belediyelerin düzenlediği fiziki yeterlilik parkur sınavı.\n• Resmî Takip: https://www.turkiye.gov.tr",
+        "url": "https://www.turkiye.gov.tr"
+      };
+    } else if (lower.contains("green card") || lower.contains("greencard") || lower.contains("dv-") || lower.contains("amerika")) {
+      return {
+        "reply": "🗽 ABD Resmî Green Card (DV Lottery) Başvuru Rehberi:\n• Ücret: Kesinlikle ÜCRETSİZDİR. Aracı kurumlara para ödemeyiniz.\n• Şartlar: En az lise mezunu olmak veya son 5 yılda 2 yıl uzmanlık gerektiren işte çalışmış olmak.\n• Başvuru Dönemi: Her yıl Ekim - Kasım ayları arasında resmî ABD Dışişleri Bakanlığı sitesinden yapılır.\n• Tek Resmî Başvuru Adresi: https://dvprogram.state.gov",
+        "url": "https://dvprogram.state.gov"
+      };
+    } else if (lower.contains("jandarma") || lower.contains("uzman")) {
       return {
         "reply": "🎯 Jandarma 2.500 Uzman Erbaş Alımı:\n• En az lise mezunu olmak\n• 27 yaşını bitirmemiş olmak (1999 ve sonrası)\n• Boy en az 167 cm (VKİ: 19-26)\n\nResmî Başvuru: https://vatandas.jandarma.gov.tr/PTM/Giris",
         "url": "https://vatandas.jandarma.gov.tr/PTM/Giris"
       };
-    } else if (lower.contains("pomem") || lower.contains("polis")) {
+    } else if (lower.contains("pomem") || lower.contains("polis") || lower.contains("bekçi") || lower.contains("bekci")) {
       return {
-        "reply": "👮 32. Dönem POMEM 10.000 Polis Memuru:\n• Lisans: KPSS P3 ≥ 60\n• Önlisans: KPSS P93 ≥ 65\n• Yaş: 30'dan gün almamış olmak\n• Erkek ≥ 167 cm, Kadın ≥ 162 cm\n\nResmî Portal: https://www.pa.edu.tr",
+        "reply": "👮 Emniyet & POMEM Polis Memuru / Bekçilik:\n• Lisans: KPSS P3 ≥ 60\n• Önlisans: KPSS P93 ≥ 65\n• Yaş: 30'dan gün almamış olmak\n• Erkek ≥ 167 cm, Kadın ≥ 162 cm\n\nResmî Portal: https://www.pa.edu.tr",
         "url": "https://www.pa.edu.tr"
+      };
+    } else if (lower.contains("sağlık") || lower.contains("saglik") || lower.contains("hemşire") || lower.contains("hemsire")) {
+      return {
+        "reply": "🏥 Sağlık Bakanlığı 36.000 Personel Alımı:\n• Branşlar: Hemşire, ebe, sağlık teknikeri, büro personeli ve İŞKUR sürekli işçi.\n• Başvuru: ÖSYM Aday İşlemleri Sistemi (ais.osym.gov.tr) üzerinden KPSS puanı ile mülakatsız.\n• Resmî Sayfa: https://yhgm.saglik.gov.tr",
+        "url": "https://yhgm.saglik.gov.tr"
+      };
+    } else if (lower.contains("adalet") || lower.contains("katip") || lower.contains("ikm") || lower.contains("gardiyan")) {
+      return {
+        "reply": "⚖️ Adalet Bakanlığı 12.500 Personel Alımı:\n• Zabıt Katibi: KPSS ≥ 70 + 3 dakikada yanlışsız en az 90 kelime klavye sınavı.\n• İKM (İnfaz Koruma): En az lise mezunu, KPSS ≥ 70, boy erkeklerde ≥ 170 cm, kadınlarda ≥ 160 cm.\n• Resmî Portallar: https://pgm.adalet.gov.tr | https://cte.adalet.gov.tr",
+        "url": "https://pgm.adalet.gov.tr"
+      };
+    } else if (lower.contains("öğretmen") || lower.contains("ogretmen") || lower.contains("meb")) {
+      return {
+        "reply": "📚 MEB 20.000 Sözleşmeli Öğretmenlik:\n• Süreç: KPSS ÖABT puanı + Sözlü mülakat süreci ve branş kontenjan dağılımı.\n• Resmî Portal: https://ilkatama.meb.gov.tr",
+        "url": "https://ilkatama.meb.gov.tr"
       };
     } else if (lower.contains("kpss") || lower.contains("65") || lower.contains("70")) {
       return {
-        "reply": "📊 KPSS 65 Puan Fırsatları:\n• Adalet Bakanlığı İKM (İnfaz Koruma)\n• Zabıt Katipliği ve Mübaşir\n• Belediye Zabıta & İtfaiye\n• POMEM Polislik Başvurusu\n\nResmî Takvim: https://ais.osym.gov.tr",
+        "reply": "📊 KPSS Taban Puanları ve Tercih Rehberi:\n• 60-65 Puan: POMEM Polislik, Belediye Zabıta/İtfaiye, İŞKUR TYP.\n• 65-70 Puan: Adalet Bakanlığı İKM, Zabıt Katipliği, Jandarma Uzman Erbaş.\n• 70+ Puan: Bakanlık merkez ve taşra sözleşmeli büro personeli.\n\nResmî Takvim: https://ais.osym.gov.tr",
         "url": "https://ais.osym.gov.tr"
       };
-    } else if (lower.contains("msü") || lower.contains("msu") || lower.contains("askeri")) {
+    } else if (lower.contains("msü") || lower.contains("msu") || lower.contains("askeri") || lower.contains("msb")) {
       return {
-        "reply": "🎖️ MSÜ Askeri Öğrenci Alımı:\n• Harp Okulları: En fazla 20 yaş\n• Astsubay MYO: En fazla 21 yaş\n• MSÜ yazılı sınavı + 2. Seçim Aşamaları (Fiziki/Mülakat)\n\nResmî Adres: https://personeltemin.msb.gov.tr",
+        "reply": "🎖️ MSB & MSÜ Askeri Personel / Öğrenci Alımı:\n• Harp Okulları ve Astsubay MYO temini.\n• Sözleşmeli er ve erbaş alımları.\n• Resmî Portal: https://personeltemin.msb.gov.tr",
         "url": "https://personeltemin.msb.gov.tr"
       };
     } else {
       return {
-        "reply": "🤖 Sorunuz incelendi. Kamu personeli alımları Resmî Gazete ve kurumların personel temin ekranlarında yayımlanır. Takip etmek istediğiniz adresi KamuRadar 'Özel Linkler' sekmesine ekleyebilir, her gün 12:00'de otomatik taranmasını sağlayabilirsiniz.\n\nResmî Adres: https://kariyerkapisi.cbiko.gov.tr",
+        "reply": "🤖 RadarAI Kamu Danışmanı:\n\nSorunuz incelendi: '$msg'.\nBelirttiğiniz kurum veya alanla ilgili ilanlar Resmî Gazete ve Cumhurbaşkanlığı Kariyer Kapısı'nda yayımlanmaktadır.\n\n💡 İpucu: Bu aramayı KamuRadar 'Özel Linkler' sekmesinde nöbete alabilir, botun her gün 12:00'de sayfayı tarayıp size bildirim atmasını sağlayabilirsiniz!\n\nResmî Portal: https://kariyerkapisi.cbiko.gov.tr",
         "url": "https://kariyerkapisi.cbiko.gov.tr"
       };
     }

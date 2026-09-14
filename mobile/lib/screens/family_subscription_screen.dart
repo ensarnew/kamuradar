@@ -182,7 +182,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w900,
-                              color: _selectedPlanIndex == 1 ? Colors.amber : const Color(0xFF0F172A),
+                              color: _selectedPlanIndex == 1 ? Colors.amber : const Color(0xFF38BDF8),
                             ),
                           ),
                         ],

@@ -400,8 +400,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Aylık Bildirim Alma Kotası", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
-                    Text("Telefonunuza düşen anlık duyuru haklarınız", style: TextStyle(fontSize: 11, color: Colors.black54)),
+                    Text("Aylık Bildirim Alma Kotası", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFFF8FAFC))),
+                    Text("Telefonunuza düşen anlık duyuru haklarınız", style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                   ],
                 ),
               ),
@@ -418,13 +418,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Kullanılan Bildirim:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const Text("Kullanılan Bildirim:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
                     Text(
                       widget.isVip ? "Sınırsız (VIP)" : "$_usedNotifications / $_totalAllowedNotifications Hak ($_remainingNotifications Kaldı)",
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w900,
-                        color: widget.isVip ? Colors.green.shade700 : AppTheme.primaryBlue,
+                        color: widget.isVip ? const Color(0xFF10B981) : const Color(0xFF38BDF8),
                       ),
                     ),
                   ],
@@ -435,9 +435,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   child: LinearProgressIndicator(
                     value: ratio,
                     minHeight: 8,
-                    backgroundColor: Colors.grey.shade200,
+                    backgroundColor: const Color(0xFF1E2D4A),
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      widget.isVip ? AppTheme.amberGold : (ratio >= 1.0 ? AppTheme.urgentRed : AppTheme.primaryBlue),
+                      widget.isVip ? AppTheme.amberGold : (ratio >= 1.0 ? AppTheme.urgentRed : const Color(0xFF38BDF8)),
                     ),
                   ),
                 ),
@@ -446,7 +446,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   widget.isVip
                       ? "👑 VIP hesabınızla tüm alım ve sınav bildirimlerini sınırsız ve reklamsız alırsınız."
                       : "Ücretsiz hesaplara ayda 3 adet bildirim alma hakkı tanınır. Kısa bir reklam izleyerek anında +2 bildirim hakkı kazanabilirsiniz.",
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                  style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
                 ),
               ],
             ),
@@ -492,16 +492,16 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.campaign, color: AppTheme.primaryBlue, size: 20),
+                decoration: BoxDecoration(color: const Color(0xFF1E3A8A).withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.campaign, color: Color(0xFF38BDF8), size: 20),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Takip Edilen İlan & Sınavlar", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
-                    Text("$_activeAlarmCount Alım ve Sınav Radarda Takipte", style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                    const Text("Takip Edilen İlan & Sınavlar", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFFF8FAFC))),
+                    Text("$_activeAlarmCount Alım ve Sınav Radarda Takipte", style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                   ],
                 ),
               ),
@@ -513,12 +513,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(12)),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, size: 16, color: AppTheme.primaryBlue),
+                const Icon(Icons.info_outline, size: 16, color: Color(0xFF38BDF8)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     "İlan ve sınavları radara eklemek tamamen ücretsizdir. Yeni duyuru yayınlandığında telefonunuza bildirim gelmesi için aylık bildirim hakkınız kullanılır.",
-                    style: TextStyle(fontSize: 10, color: Colors.grey.shade700, height: 1.3),
+                    style: const TextStyle(fontSize: 10, color: Color(0xFFCBD5E1), height: 1.3),
                   ),
                 ),
               ],
@@ -528,8 +528,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
-              icon: const Icon(Icons.delete_sweep_outlined, size: 16, color: Colors.grey),
-              label: const Text("Kurulu Alarmları Kapat", style: TextStyle(fontSize: 11, color: Colors.grey)),
+              icon: const Icon(Icons.delete_sweep_outlined, size: 16, color: Color(0xFFEF4444)),
+              label: const Text("Kurulu Alarmları Kapat", style: TextStyle(fontSize: 11, color: Color(0xFFEF4444))),
               onPressed: _resetAllAlarms,
             ),
           ),
@@ -554,7 +554,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(color: const Color(0xFFF59E0B).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
                 child: const Icon(Icons.settings, color: AppTheme.amberGold, size: 20),
               ),
               const SizedBox(width: 10),
@@ -562,8 +562,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Uygulama Bildirim Ayarları", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
-                    Text("Günlük tarama saati ve telefon tercihleri", style: TextStyle(fontSize: 11, color: Colors.black54)),
+                    Text("Uygulama Bildirim Ayarları", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFFF8FAFC))),
+                    Text("Günlük tarama saati ve telefon tercihleri", style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                   ],
                 ),
               ),
@@ -575,8 +575,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text("Günde 1 Kez Toplu Bildirim (Saat 12:00)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-            subtitle: const Text("Gereksiz bildirim kirliliği olmaz, her gün 12:00'de toplu özet gelir.", style: TextStyle(fontSize: 10)),
+            title: const Text("Günde 1 Kez Toplu Bildirim (Saat 12:00)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
+            subtitle: const Text("Gereksiz bildirim kirliliği olmaz, her gün 12:00'de toplu özet gelir.", style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
             value: _dailyScanNotification,
             activeThumbColor: AppTheme.primaryBlue,
             onChanged: (v) => setState(() => _dailyScanNotification = v),
@@ -587,30 +587,30 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text("Kritik Son Gün Uyarısı (24 Saat Kala)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-            subtitle: const Text("Takip ettiğiniz ilanın son başvuru gününde acil hatırlatma.", style: TextStyle(fontSize: 10)),
+            title: const Text("Kritik Son Gün Uyarısı (24 Saat Kala)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
+            subtitle: const Text("Takip ettiğiniz ilanın son başvuru gününde acil hatırlatma.", style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
             value: _urgentLastDayAlert,
             activeThumbColor: AppTheme.primaryBlue,
             onChanged: (v) => setState(() => _urgentLastDayAlert = v),
           ),
-          const Divider(height: 1),
+          const Divider(height: 1, color: Color(0xFF1E2D4A)),
 
           // Bildirim Sesi
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text("Bildirim Sesi", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            title: const Text("Bildirim Sesi", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
             value: _notificationSound,
             activeThumbColor: AppTheme.primaryBlue,
             onChanged: (v) => setState(() => _notificationSound = v),
           ),
-          const Divider(height: 1),
+          const Divider(height: 1, color: Color(0xFF1E2D4A)),
 
           // Titreşim
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text("Titreşim", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            title: const Text("Titreşim", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
             value: _notificationVibrate,
             activeThumbColor: AppTheme.primaryBlue,
             onChanged: (v) => setState(() => _notificationVibrate = v),
@@ -644,8 +644,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Çevrimdışı Önbellek (Offline Mode)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
-                    Text("İnternetsiz ortamda alarmlarınız güvende", style: TextStyle(fontSize: 11, color: Colors.black54)),
+                    Text("Çevrimdışı Önbellek (Offline Mode)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFFF8FAFC))),
+                    Text("İnternetsiz ortamda alarmlarınız güvende", style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                   ],
                 ),
               ),
@@ -655,7 +655,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Önbellek Durumu:", style: TextStyle(fontSize: 11, color: Colors.black87)),
+              Text("Önbellek Durumu:", style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
               Text("✅ Cihazda Saklanıyor", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.successGreen)),
             ],
           ),
@@ -665,10 +665,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF38BDF8),
+                    side: const BorderSide(color: Color(0xFF1E2D4A)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   icon: const Icon(Icons.sync, size: 14),
-                  label: const Text("Şimdi Senkronize Et", style: TextStyle(fontSize: 11)),
+                  label: const Text("Şimdi Senkronize Et", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Canlı sunucu ile senkronize edildi.")),
@@ -680,10 +682,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.urgentRed,
+                  side: const BorderSide(color: Color(0xFFEF4444)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 onPressed: _clearCache,
-                child: const Text("Temizle", style: TextStyle(fontSize: 11)),
+                child: const Text("Temizle", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -704,7 +707,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Uygulama Bilgisi", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+          const Text("Uygulama Bilgisi", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFFF8FAFC))),
           const SizedBox(height: 8),
           InkWell(
             onTap: _handleVersionTap,
@@ -714,8 +717,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Sürüm", style: TextStyle(fontSize: 11, color: Colors.black54)),
-                  Text("KamuRadar PRO v1.0.0", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  Text("Sürüm", style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                  Text("KamuRadar PRO v1.0.0", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
                 ],
               ),
             ),
@@ -724,8 +727,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Paket Kimliği", style: TextStyle(fontSize: 11, color: Colors.black54)),
-              Text("com.kamuradar.app", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              Text("Paket Kimliği", style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+              Text("com.kamuradar.app", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
             ],
           ),
           const SizedBox(height: 10),
