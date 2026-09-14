@@ -11,6 +11,7 @@ class AdminPanelScreen extends StatefulWidget {
 class _AdminPanelScreenState extends State<AdminPanelScreen> {
   final TextEditingController _notifTitleController = TextEditingController();
   final TextEditingController _notifBodyController = TextEditingController();
+  final TextEditingController _notifUrlController = TextEditingController();
 
   final TextEditingController _newOrgController = TextEditingController();
   final TextEditingController _newTitleController = TextEditingController();
@@ -38,6 +39,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   void _sendCustomNotification() {
     final title = _notifTitleController.text.trim();
     final body = _notifBodyController.text.trim();
+    final promoUrl = _notifUrlController.text.trim();
 
     if (title.isEmpty || body.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -48,11 +50,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
     _notifTitleController.clear();
     _notifBodyController.clear();
+    _notifUrlController.clear();
 
+    final hasUrl = promoUrl.isNotEmpty;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: AppTheme.primaryBlue,
-        content: Text("🔥 Firebase FCM: '$title' bildirimi tüm hedef kullanıcılara fırlatıldı!"),
+        duration: const Duration(seconds: 4),
+        content: Text(hasUrl
+            ? "🚀 Firebase FCM: '$title' bildirimi fırlatıldı! Kullanıcılar tıklayınca doğrudan linke gidecek:\n🔗 $promoUrl"
+            : "🚀 Firebase FCM: '$title' bildirimi tüm hedef kullanıcılara fırlatıldı!"),
       ),
     );
   }
@@ -243,15 +250,20 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     children: [
                       Icon(Icons.send_to_mobile, color: Colors.redAccent, size: 20),
                       SizedBox(width: 8),
-                      Text("Anlık Push Bildirimi Fırlat (FCM)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                      Text("Anlık Push Bildirimi & Reklam / Link Yönlendirme (FCM)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Buradan yazacağın bildirim tüm kullanıcılara gider. Link eklersen, kullanıcı bildirime dokunduğu anda doğrudan senin YouTube videona, Instagram hesabına veya reklam aldığın web sitesine yönlendirilir.",
+                    style: TextStyle(fontSize: 10, color: Colors.black54),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _notifTitleController,
                     decoration: InputDecoration(
                       labelText: "Bildirim Başlığı",
-                      hintText: "Örn: Acil: Sağlık Bakanlığı Son Gün!",
+                      hintText: "Örn: 🎬 Yeni Videom Yayında! / Özel Fırsat",
                       isDense: true,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -262,7 +274,18 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     maxLines: 2,
                     decoration: InputDecoration(
                       labelText: "Bildirim Mesajı",
-                      hintText: "Örn: Başvurular bugün 23:59'da kapanıyor. Hemen inceleyin.",
+                      hintText: "Örn: KPSS ve kamu alımlarında kaçırılmayacak detayları anlattım. İzlemek için dokunun!",
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _notifUrlController,
+                    decoration: InputDecoration(
+                      labelText: "Yönlendirilecek Link (YouTube / Sponsor / Web Sitesi)",
+                      hintText: "Örn: https://youtube.com/watch?v=... veya https://siteniz.com",
+                      prefixIcon: const Icon(Icons.link, size: 18, color: AppTheme.primaryBlue),
                       isDense: true,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -270,16 +293,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
-                    height: 42,
+                    height: 44,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryBlue,
-                        foregroundColor: Colors.white,
+                        backgroundColor: const Color(0xFF0F172A),
+                        foregroundColor: Colors.amber,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: _sendCustomNotification,
-                      icon: const Icon(Icons.send, size: 16),
-                      label: const Text("Tüm Kullanıcılara Bildirimi Gönder", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      icon: const Icon(Icons.campaign, size: 18),
+                      label: const Text("Tüm Kullanıcılara Linkli Bildirimi Fırlat", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ),
                 ],

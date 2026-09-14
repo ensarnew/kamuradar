@@ -234,3 +234,39 @@ def get_radar_ai_quota(user_id: str):
         "used_quota": max_quota - remaining
     }
 
+
+# ----------------- 7. YÖNETİCİ ÖZEL BİLDİRİM & REKLAM/VİDEO YÖNLENDİRME (FCM) -----------------
+
+class AdminBroadcastNotificationRequest(BaseModel):
+    title: str
+    body: str
+    promo_url: Optional[str] = None
+    target_topic: str = "all_users"
+
+@app.post("/api/admin/broadcast-notification")
+def send_admin_broadcast_notification(req: AdminBroadcastNotificationRequest):
+    """
+    Yöneticinin tüm kullanıcılara veya belirli hedefe anlık push bildirimi fırlatmasını sağlar.
+    Kullanıcı bildirime tıkladığında doğrudan yöneticinin belirttiği özel video (YouTube/TikTok),
+    Instagram veya reklam anlaşması yapılan web sitesi linkine yönlendirilir!
+    """
+    from services.firebase_service import FirebaseNotificationService
+    
+    result = FirebaseNotificationService.send_push_notification(
+        topic=req.target_topic,
+        title=req.title,
+        body=req.body,
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "url": req.promo_url or "",
+            "type": "promo_ad",
+            "is_external_link": "true" if req.promo_url else "false"
+        }
+    )
+    return {
+        "status": "success",
+        "message": f"'{req.title}' bildirimi tüm kullanıcılara fırlatıldı!",
+        "target_url": req.promo_url,
+        "fcm_response": result
+    }
+
