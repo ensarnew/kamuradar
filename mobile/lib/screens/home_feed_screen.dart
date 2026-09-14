@@ -1866,7 +1866,16 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
         title: Row(
           children: [
-            const Icon(Icons.radar, color: AppTheme.primaryBlue, size: 22),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 26,
+                height: 26,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.radar, color: AppTheme.primaryBlue, size: 22),
+              ),
+            ),
             const SizedBox(width: 8),
             const Text("KamuRadar", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
             if (_isOfflineMode)
