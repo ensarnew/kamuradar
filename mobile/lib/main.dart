@@ -10,23 +10,25 @@ import 'services/notification_service.dart';
 import 'services/ad_service.dart';
 import 'theme/app_theme.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await Firebase.initializeApp();
-    await NotificationService.initialize();
-  } catch (e) {
-    debugPrint("Firebase başlatma notu (yerel test modunda devam ediliyor): $e");
-  }
-
-  try {
-    // Unity Ads SDK Başlatma (Oyun Kimliği: 800372910)
-    await AdService.instance.initialize(testMode: false);
-  } catch (e) {
-    debugPrint("Unity Ads başlatma notu: $e");
-  }
-
   runApp(const KamuRadarApp());
+
+  // Arka plan servislerini UI'ı bloke etmeden güvenli başlat
+  Future.microtask(() async {
+    try {
+      await Firebase.initializeApp();
+      await NotificationService.initialize();
+    } catch (e) {
+      debugPrint("Firebase başlatma notu: $e");
+    }
+
+    try {
+      await AdService.instance.initialize(testMode: false);
+    } catch (e) {
+      debugPrint("Unity Ads başlatma notu: $e");
+    }
+  });
 }
 
 
