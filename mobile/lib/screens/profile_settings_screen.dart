@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/cache_service.dart';
 import '../services/ad_service.dart';
 import '../theme/app_theme.dart';
+import 'admin_panel_screen.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   final bool isVip;
@@ -23,6 +24,100 @@ class ProfileSettingsScreen extends StatefulWidget {
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   int _activeAlarmCount = 2;
   int _usedNotifications = 1;
+  int _versionTapCount = 0;
+  DateTime? _lastTapTime;
+
+  void _handleVersionTap() {
+    final now = DateTime.now();
+    if (_lastTapTime == null || now.difference(_lastTapTime!).inSeconds > 2) {
+      _versionTapCount = 1;
+    } else {
+      _versionTapCount++;
+    }
+    _lastTapTime = now;
+
+    if (_versionTapCount >= 5) {
+      _versionTapCount = 0;
+      _showAdminPasswordDialog();
+    } else if (_versionTapCount >= 3) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(milliseconds: 600),
+          content: Text("Yönetici moduna ${5 - _versionTapCount} tık kaldı..."),
+        ),
+      );
+    }
+  }
+
+  void _showAdminPasswordDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.security, color: Colors.amber, size: 24),
+            SizedBox(width: 8),
+            Text("Yönetici Doğrulama", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "KamuRadar Yönetici Paneline erişmek için lütfen yetkili şifrenizi girin:",
+              style: TextStyle(fontSize: 12, color: Colors.black87),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              obscureText: true,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: "Yönetici Şifresi",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("İptal"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0F172A),
+              foregroundColor: Colors.amber,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              final pwd = controller.text.trim();
+              if (pwd == "Ensarakyr110823.AZRA") {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AdminPanelScreen()),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    backgroundColor: AppTheme.urgentRed,
+                    content: Text("❌ Hatalı yönetici şifresi! Erişim reddedildi."),
+                  ),
+                );
+              }
+            },
+            child: const Text("Giriş Yap", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
   int _bonusNotifications = 0;
   final int _baseNotificationLimit = 3;
 
@@ -619,12 +714,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         children: [
           const Text("Uygulama Bilgisi", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
           const SizedBox(height: 8),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Sürüm", style: TextStyle(fontSize: 11, color: Colors.black54)),
-              Text("v1.0.0 (Google Play Yayına Hazır)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            ],
+          InkWell(
+            onTap: _handleVersionTap,
+            borderRadius: BorderRadius.circular(8),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("Sürüm", style: TextStyle(fontSize: 11, color: Colors.black54)),
+                  Text("KamuRadar PRO v1.0.0", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 6),
           const Row(
