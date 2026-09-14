@@ -39,14 +39,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     if (_versionTapCount >= 5) {
       _versionTapCount = 0;
       _showAdminPasswordDialog();
-    } else if (_versionTapCount >= 3) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(milliseconds: 600),
-          content: Text("Yönetici moduna ${5 - _versionTapCount} tık kaldı..."),
-        ),
-      );
     }
   }
 

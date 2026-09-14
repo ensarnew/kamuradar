@@ -37,15 +37,26 @@ class RadarAIService:
 
     # Hızlı ve doğrulanmış kamu bağlantıları eşleştirmesi
     KNOWN_OFFICIAL_URLS = {
+        "tarim": "https://www.tarimorman.gov.tr",
+        "orman": "https://www.ogm.gov.tr",
+        "ogm": "https://www.ogm.gov.tr",
         "jandarma": "https://vatandas.jandarma.gov.tr/PTM/Giris",
         "msu": "https://personeltemin.msb.gov.tr",
         "msb": "https://personeltemin.msb.gov.tr",
         "pomem": "https://www.pa.edu.tr",
         "polis": "https://www.pa.edu.tr",
+        "bekci": "https://www.pa.edu.tr",
         "osym": "https://ais.osym.gov.tr",
         "kpss": "https://ais.osym.gov.tr",
         "saglik": "https://yhgm.saglik.gov.tr",
         "adalet": "https://pgm.adalet.gov.tr",
+        "cte": "https://cte.adalet.gov.tr",
+        "meb": "https://ilkatama.meb.gov.tr",
+        "ogretmen": "https://ilkatama.meb.gov.tr",
+        "iskur": "https://esube.iskur.gov.tr",
+        "typ": "https://esube.iskur.gov.tr",
+        "gib": "https://www.gib.gov.tr",
+        "belediye": "https://www.turkiye.gov.tr",
         "kariyer": "https://kariyerkapisi.cbiko.gov.tr"
     }
 
@@ -145,14 +156,64 @@ class RadarAIService:
         """
         lower = message.lower()
 
-        if "jandarma" in lower or "uzman erbaş" in lower:
+        if "tarım" in lower or "orman" in lower or "ogm" in lower or "tarim" in lower:
             return (
-                "🎯 **Jandarma 2.500 Uzman Erbaş Alım Şartları:**\n\n"
-                "• **Öğrenim:** En az lise ve dengi okul mezunu olmak.\n"
-                "• **Yaş Sınırı:** 01 Ocak 2026 itibarıyla 27 yaşını bitirmemiş olmak (01.01.1999 ve sonrası doğumlular).\n"
-                "• **Boy/Kilo:** En az 167 cm boy ve boy-kilo tablosuna uygun VKİ (19-26 aralığı).\n"
-                "• **Resmî Başvuru:** Doğrudan https://vatandas.jandarma.gov.tr/PTM/Giris adresinden yapılır.\n\n"
-                "💡 *İpucu:* Bu linki KamuRadar'ın 'Özel Linkler' sekmesine ekleyerek günlük saat 12:00 taramasında değişiklik alarmlarını alabilirsin!"
+                "🌲 **Tarım ve Orman Bakanlığı & OGM Alım Şartları:**\n\n"
+                "• **Kadro Çeşitleri:** Orman Muhafaza Memuru, yangın söndürme işçisi, veteriner hekim, ziraat mühendisi ve büro personeli.\n"
+                "• **Başvuru Kanalı:** Cumhurbaşkanlığı İşe Alım Kariyer Kapısı (isealimkariyerkapisi.cbiko.gov.tr) ve ÖSYM KPSS merkezi atamaları ile yapılır.\n"
+                "• **Resmî Duyuru Adresleri:**\n"
+                "  - Bakanlık Portalı: https://www.tarimorman.gov.tr\n"
+                "  - Orman Genel Müdürlüğü: https://www.ogm.gov.tr\n\n"
+                "💡 *İpucu:* Bu adresi KamuRadar'ın 'Özel Linkler' sekmesine ekleyerek her gün saat 12:00'de otomatik taranmasını sağlayabilirsin!"
+            )
+
+        if "sağlık" in lower or "saglik" in lower or "hastane" in lower or "hemşire" in lower or "hemsire" in lower:
+            return (
+                "🏥 **Sağlık Bakanlığı 36.000 Personel Alımı:**\n\n"
+                "• **Alım Branşları:** Hemşire, ebe, sağlık teknikeri, büro personeli ve İŞKUR sürekli işçi (temizlik, güvenlik, klinik destek).\n"
+                "• **Başvuru Süresi:** 08.09.2026 - 25.09.2026 (Şu anda BAŞVURU AÇIK!).\n"
+                "• **Resmî Başvuru:** ÖSYM Aday İşlemleri Sistemi (ais.osym.gov.tr) üzerinden KPSS puanı ile mülakatsız atanır.\n"
+                "• **Resmî Sayfa:** https://yhgm.saglik.gov.tr | https://ais.osym.gov.tr"
+            )
+
+        if "adalet" in lower or "katip" in lower or "ikm" in lower or "gardiyan" in lower or "mübaşir" in lower or "cte" in lower:
+            return (
+                "⚖️ **Adalet Bakanlığı 12.500 Personel Alımı:**\n\n"
+                "• **Zabıt Katibi:** KPSS en az 70 puan + 3 dakikada yanlışsız en az 90 kelime klavye uygulama sınavı.\n"
+                "• **İnfaz Koruma Memuru (İKM):** En az lise mezunu, KPSS 70 taban puan. Boy şartı: Erkeklerde min 170 cm, kadınlarda min 160 cm (Boy-kilo farkı en fazla 13 olmalı).\n"
+                "• **Başvuru Tarihi:** 10.09.2026 - 28.09.2026 (BAŞVURU AÇIK).\n"
+                "• **Resmî Portallar:** https://pgm.adalet.gov.tr | https://cte.adalet.gov.tr"
+            )
+
+        if "öğretmen" in lower or "ogretmen" in lower or "meb" in lower or "okul" in lower:
+            return (
+                "📚 **Milli Eğitim Bakanlığı (MEB) 20.000 Sözleşmeli Öğretmenlik:**\n\n"
+                "• **Süreç:** KPSS ÖABT puanı + Sözlü mülakat süreci ve branş kontenjan dağılımı.\n"
+                "• **Başvuru/Tercih Tarihi:** 06.09.2026 - 21.09.2026 (Şu anda AÇIK).\n"
+                "• **Resmî Portal:** https://ilkatama.meb.gov.tr"
+            )
+
+        if "işkur" in lower or "iskur" in lower or "typ" in lower:
+            return (
+                "🏢 **İŞKUR TYP 40.000 Okul Güvenlik & Temizlik Alımları:**\n\n"
+                "• **Şartlar:** İŞKUR'a kayıtlı işsiz olmak, 18 yaşını tamamlamış olmak, hane geliri asgari ücretin 1.5 katını aşmamak.\n"
+                "• **Seçim:** Noter kurası ile belirlenir.\n"
+                "• **Resmî Portal:** https://esube.iskur.gov.tr"
+            )
+
+        if "gelir" in lower or "gib" in lower or "guy" in lower:
+            return (
+                "📈 **Gelir İdaresi (GİB) 1.271 Gelir Uzman Yardımcısı (GUY):**\n\n"
+                "• **Bölümler:** İİBF, Siyasal Bilgiler ve Hukuk fakülteleri mezunları.\n"
+                "• **KPSS:** KPSS P48 veya ilgili puan türünden taban puan + yazılı giriş sınavı.\n"
+                "• **Resmî Portal:** https://www.gib.gov.tr"
+            )
+
+        if "belediye" in lower or "zabıta" in lower or "zabita" in lower or "itfaiye" in lower:
+            return (
+                "🏛️ **Büyükşehir Belediyeleri 1.800 Zabıta ve İtfaiye Eri Alımı:**\n\n"
+                "• **Şartlar:** Kadınlarda en az 160 cm, erkeklerde en az 167 cm boy. KPSS ilgili puan türü ve fiziki yeterlilik parkur testi.\n"
+                "• **Resmî Portal:** https://www.turkiye.gov.tr (Kariyer Kapısı)"
             )
 
         if "polis" in lower or "pomem" in lower:
