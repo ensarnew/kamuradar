@@ -27,15 +27,48 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
   final TextEditingController _friendCodeController = TextEditingController();
   List<String> _members = [];
   final int _maxExtraMembers = 3;
+  bool _isGroupOwner = false;
+  String? _joinedViaCode;
 
   @override
   void initState() {
     super.initState();
     _isPlanPurchased = widget.isVip;
-    _loadMembers();
-    if (_isPlanPurchased) {
-      _loadOrGenerateInviteCode();
-    }
+    _checkPlanRole();
+  }
+
+  Future<void> _checkPlanRole() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final plan = prefs.getString("cache_vip_plan") ?? (widget.isVip ? "yearly_vip" : "free");
+      final joinedCode = prefs.getString("joined_family_code");
+
+      if (plan == "family_invited_vip") {
+        if (mounted) {
+          setState(() {
+            _isGroupOwner = false;
+            _isPlanPurchased = true;
+            _joinedViaCode = joinedCode;
+          });
+        }
+      } else if (plan == "yearly_vip" || plan == "monthly_vip" || plan == "vip_family_plan" || widget.isVip) {
+        if (mounted) {
+          setState(() {
+            _isGroupOwner = true;
+            _isPlanPurchased = true;
+          });
+        }
+        _loadMembers();
+        _loadOrGenerateInviteCode();
+      } else {
+        if (mounted) {
+          setState(() {
+            _isGroupOwner = false;
+            _isPlanPurchased = false;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   String _generateUniqueCode() {
@@ -121,6 +154,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
 
     setState(() {
       _isPlanPurchased = true;
+      _isGroupOwner = true;
       _generatedInviteCode = code;
       _members = []; // Başlangıçta tüm 3 davet yuvası boştur, arkadaşlar katıldıkça dolar
     });
@@ -255,8 +289,12 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     }
 
     if (isValid) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("joined_family_code", cleanCode);
       setState(() {
         _isPlanPurchased = true;
+        _isGroupOwner = false;
+        _joinedViaCode = cleanCode;
       });
       await FirebaseSyncService.setVipStatus(true, plan: "family_invited_vip");
       widget.onPlanPurchased?.call();
@@ -483,138 +521,191 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                 ),
               ),
             ] else ...[
-              // Satın Alındı: Kod Üretildi ve Slotlar Açıldı
+              if (_isGroupOwner) ...[
+                // 1. Yönetici Kartı: Sadece satın alan kişi kod dağıtabilir ve slotları yönetir
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF131E33),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.amberGold),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.workspace_premium, color: AppTheme.amberGold, size: 22),
+                              SizedBox(width: 8),
+                              Text("Aboneliğiniz Aktif (Grup Yöneticisi)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                            ],
+                          ),
+                          TextButton(
+                            onPressed: _cancelSubscription,
+                            child: const Text("İptal Et", style: TextStyle(color: Color(0xFFEF4444), fontSize: 12, fontWeight: FontWeight.bold)),
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text("3 Arkadaşınızla Paylaşacağınız Özel Davet Kodu:", style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF1E2D4A))),
+                            child: Text(
+                              _generatedInviteCode ?? "KR-YENİ",
+                              style: const TextStyle(color: AppTheme.amberGold, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+                            icon: const Icon(Icons.copy, size: 14, color: Colors.white),
+                            label: const Text("Kopyala", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              if (_generatedInviteCode != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Davet kodunuz kopyalandı: $_generatedInviteCode")),
+                                );
+                              }
+                            },
+                          )
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                const Text("Grup Kontenjanı (Siz + 3 Kişi)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 8),
+                _buildSlot("1. Ensar (Siz - Yönetici)", "Aktif", const Color(0xFF38BDF8), true),
+                for (int i = 0; i < _maxExtraMembers; i++)
+                  if (i < _members.length)
+                    _buildSlot("${i + 2}. ${_members[i]}", "Aile Üyesi • Aktif", const Color(0xFF10B981), true)
+                  else
+                    _buildSlot("${i + 2}. Boş Davet Yuvası", "Arkadaşınızı davet edin", const Color(0xFF64748B), false),
+              ] else ...[
+                // 2. Davetli Üye Kartı: Kod DAĞITAMAZ, sadece VIP haklarından faydalanır
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF131E33),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF10B981)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.verified_user, color: Color(0xFF10B981), size: 22),
+                          SizedBox(width: 8),
+                          Text("Aile Planı Üyeliği Aktif (Davetli Üye)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _joinedViaCode != null
+                            ? "Arkadaşınızın '$_joinedViaCode' davet koduyla Premium aile grubuna katıldınız. 54 İlanın tamamı, sıfır reklam ve özel link takibi sınırsız kullanımınızdadır."
+                            : "Premium Aile Planı üyesi olarak tüm VIP avantajlarından (54 İlan Açık, Sıfır Reklam) sınırsız yararlanıyorsunuz.",
+                        style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, height: 1.4),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF1E2D4A)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.lock_outline, color: Color(0xFF38BDF8), size: 16),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Güvenlik & Lisans Kuralı: Yalnızca satın alan grup yöneticisi yeni üye davet edebilir. Üyeliğiniz yönetici aboneliği devam ettiği sürece aktiftir.",
+                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+
+            // 2. KISIM: KARŞI TARAF İÇİN KOD GİRME ALANI (SADECE VIP OLMAYANLAR İÇİN GÖRÜNÜR)
+            if (!_isPlanPurchased) ...[
+              const SizedBox(height: 24),
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: const Color(0xFF131E33),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.amberGold),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF1E2D4A)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    const Row(
                       children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.workspace_premium, color: AppTheme.amberGold, size: 22),
-                            SizedBox(width: 8),
-                            Text("Aboneliğiniz Aktif (Yönetici)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                          ],
-                        ),
-                        TextButton(
-                          onPressed: _cancelSubscription,
-                          child: const Text("İptal Et", style: TextStyle(color: Color(0xFFEF4444), fontSize: 12, fontWeight: FontWeight.bold)),
-                        )
+                        Icon(Icons.vpn_key, color: Color(0xFF38BDF8), size: 18),
+                        SizedBox(width: 8),
+                        Text("Arkadaşının Davet Kodu mu Var?", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    const Text("Arkadaşlarınızla Paylaşacağınız Davet Kodu:", style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
+                    const Text(
+                      "Size verilen özel aile davet kodunu girerek hiçbir ücret ödemeden anında Premium üyeliğe geçebilirsiniz.",
+                      style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF1E2D4A))),
-                          child: Text(
-                            _generatedInviteCode ?? "KR-YENİ",
-                            style: const TextStyle(color: AppTheme.amberGold, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
+                        Expanded(
+                          child: TextField(
+                            controller: _friendCodeController,
+                            textCapitalization: TextCapitalization.characters,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            decoration: InputDecoration(
+                              hintText: "Örn: KR-8X92",
+                              hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                              filled: true,
+                              fillColor: const Color(0xFF091122),
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF1E2D4A))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF1E2D4A))),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
+                            ),
+                            onSubmitted: _submitFriendInviteCode,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
-                          icon: const Icon(Icons.copy, size: 14, color: Colors.white),
-                          label: const Text("Kopyala", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                          onPressed: () {
-                            if (_generatedInviteCode != null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("Davet kodunuz kopyalandı: $_generatedInviteCode")),
-                              );
-                            }
-                          },
-                        )
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () => _submitFriendInviteCode(_friendCodeController.text),
+                          child: const Text("Katıl & VIP Ol", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 16),
-              const Text("Grup Kontenjanı (Siz + 3 Kişi)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-              const SizedBox(height: 8),
-              _buildSlot("1. Ensar (Siz - Yönetici)", "Aktif", const Color(0xFF38BDF8), true),
-              for (int i = 0; i < _maxExtraMembers; i++)
-                if (i < _members.length)
-                  _buildSlot("${i + 2}. ${_members[i]}", "Aile Üyesi • Aktif", const Color(0xFF10B981), true)
-                else
-                  _buildSlot("${i + 2}. Boş Davet Yuvası", "Arkadaşınızı davet edin", const Color(0xFF64748B), false),
             ],
-
-            const SizedBox(height: 24),
-
-            // 2. KISIM: KARŞI TARAF İÇİN KOD GİRME ALANI
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF131E33),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF1E2D4A)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.vpn_key, color: Color(0xFF38BDF8), size: 18),
-                      SizedBox(width: 8),
-                      Text("Arkadaşının Davet Kodu mu Var?", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    "Size verilen özel aile davet kodunu girerek hiçbir ücret ödemeden anında Premium üyeliğe geçebilirsiniz.",
-                    style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _friendCodeController,
-                          textCapitalization: TextCapitalization.characters,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          decoration: InputDecoration(
-                            hintText: "Örn: KR-8X92",
-                            hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
-                            filled: true,
-                            fillColor: const Color(0xFF091122),
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF1E2D4A))),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF1E2D4A))),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
-                          ),
-                          onSubmitted: _submitFriendInviteCode,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        onPressed: () => _submitFriendInviteCode(_friendCodeController.text),
-                        child: const Text("Katıl & VIP Ol", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
