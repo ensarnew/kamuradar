@@ -5,6 +5,7 @@ import 'screens/custom_watcher_screen.dart';
 import 'screens/family_subscription_screen.dart';
 import 'screens/profile_settings_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/in_app_purchase_service.dart';
 import 'services/notification_service.dart';
 import 'services/ad_service.dart';
 import 'services/firebase_sync_service.dart';
@@ -21,6 +22,10 @@ void main() async {
   }
 
   Future.microtask(() async {
+    try {
+      await InAppPurchaseService.instance.initialize();
+    } catch (_) {}
+
     try {
       await FirebaseSyncService.restoreUserDataFromCloud();
     } catch (_) {}

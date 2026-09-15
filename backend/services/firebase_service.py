@@ -130,6 +130,38 @@ class FirebaseNotificationService:
         )
 
     @classmethod
+    def notify_daily_scan_completed(cls, open_count: int = 0) -> Dict[str, Any]:
+        """
+        Her gün her taramadan sonra tüm kullanıcılara push bildirim gönderir:
+        '📢 Yeni Kamu İlanları Listelendi! Bugünün güncel memur, polis ve kamu alım ilanları yayında. Hemen bak!'
+        """
+        notif_title = "📢 Yeni Kamu İlanları Listelendi!"
+        notif_body = f"Bugünün güncel memur, polis ve kamu işçi alım ilanları güncellendi ({open_count} açık ilan). Fırsatları kaçırmamak için hemen bak!"
+        
+        # 'kamuradar_all' ve 'announcements' konularına gönder
+        res1 = cls.send_push_notification(
+            topic="kamuradar_all",
+            title=notif_title,
+            body=notif_body,
+            data={
+                "type": "daily_scan_completed",
+                "open_count": str(open_count),
+                "click_action": "FLUTTER_NOTIFICATION_CLICK"
+            }
+        )
+        cls.send_push_notification(
+            topic="announcements",
+            title=notif_title,
+            body=notif_body,
+            data={
+                "type": "daily_scan_completed",
+                "open_count": str(open_count),
+                "click_action": "FLUTTER_NOTIFICATION_CLICK"
+            }
+        )
+        return res1
+
+    @classmethod
     def notify_targeted_alarm_subscribers(
         cls,
         channel_id: str,

@@ -94,7 +94,13 @@ class NotificationService {
         }
       });
 
-      // 6. Cihaz FCM Token'ı al
+      // 6. Cihaz FCM Token'ı al ve Genel Duyuru Başlıklarına Abone Ol
+      try {
+        await _messaging.subscribeToTopic('kamuradar_all');
+        await _messaging.subscribeToTopic('announcements');
+        if (kDebugMode) print("📢 Cihaz 'kamuradar_all' ve 'announcements' bildirim kanallarına abone edildi.");
+      } catch (_) {}
+
       String? token = await _messaging.getToken();
       if (kDebugMode) {
         print("📱 Cihaz FCM Token: $token");

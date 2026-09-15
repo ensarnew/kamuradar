@@ -10,6 +10,10 @@ import '../services/ad_service.dart';
 import '../services/firebase_sync_service.dart';
 import '../services/notification_service.dart';
 import 'profile_settings_screen.dart';
+import 'family_subscription_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/in_app_purchase_service.dart';
 import '../widgets/announcement_detail_sheet.dart';
 
 class ChannelAlarm {
@@ -102,6 +106,201 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     super.initState();
     _loadCachedAlarms();
     _syncWithLiveServer();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkFirstLaunchPrompts();
+    });
+  }
+
+  Future<void> _checkFirstLaunchPrompts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasAcceptedDisclaimer = prefs.getBool("has_accepted_disclaimer") ?? false;
+      if (!hasAcceptedDisclaimer && mounted) {
+        await _showDisclaimerModal();
+      }
+
+      final hasShownRate = prefs.getBool("has_shown_rate_dialog") ?? false;
+      if (!hasShownRate && mounted) {
+        await Future.delayed(const Duration(milliseconds: 600));
+        if (mounted) {
+          await _showRateAppDialog();
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _showDisclaimerModal() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131E33),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFF59E0B))),
+        title: const Row(
+          children: [
+            Icon(Icons.gavel, color: Color(0xFFF59E0B), size: 24),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Yasal Uyarı & Sorumluluk Reddi",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF1E2D4A)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "KamuRadar Bağımsız Bir Takip Servisidir",
+                      style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      "KamuRadar, herhangi bir devlet kurumu, bakanlık veya resmi kamu teşekkülü ile kurumsal/resmi bir bağı bulunmayan bağımsız bir kamu ilan ve sınav takip platformudur.",
+                      style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                "• İlan Kaynakları: Uygulamada yer alan kamu alımları; Resmî Gazete, İŞKUR, Kamu İlan Portalı (kamuilan.sbb.gov.tr) ve ilgili kurumların halka açık resmi internet sitelerinden derlenmektedir.\n\n"
+                "• Başvuru İşlemleri: KamuRadar üzerinden başvuru alınmaz. Başvurular yalnızca ilgili kurumun resmî web sayfası üzerinden gerçekleştirilir.\n\n"
+                "• Kesin Bilgi: Nihai şartlar ve başvuru kılavuzları için kurumların resmi internet sayfaları esas alınmalıdır.",
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool("has_accepted_disclaimer", true);
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text("Okudum, Anladım ve Kabul Ediyorum", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showRateAppDialog() async {
+    int selectedStars = 5;
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          backgroundColor: const Color(0xFF131E33),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFF38BDF8))),
+          title: const Column(
+            children: [
+              Icon(Icons.stars, color: Color(0xFFF59E0B), size: 36),
+              SizedBox(height: 8),
+              Text(
+                "KamuRadar'ı Değerlendirin",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Kamu ve KPSS ilanlarını kaçırmamanız için her gün güncellenen KamuRadar'ı beğendiniz mi? Deneyiminizi 5 yıldızla taçlandırarak bize destek olabilirsiniz!",
+                style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, height: 1.4),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final starIndex = index + 1;
+                  return IconButton(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      starIndex <= selectedStars ? Icons.star : Icons.star_border,
+                      color: const Color(0xFFF59E0B),
+                      size: 32,
+                    ),
+                    onPressed: () {
+                      setModalState(() {
+                        selectedStars = starIndex;
+                      });
+                    },
+                  );
+                }),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                selectedStars == 5 ? "⭐⭐⭐⭐⭐ Harika!" : "$selectedStars Yıldız",
+                style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ],
+          ),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool("has_shown_rate_dialog", true);
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    },
+                    child: const Text("Daha Sonra", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                  ),
+                ),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF22C55E),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool("has_shown_rate_dialog", true);
+                      if (ctx.mounted) Navigator.pop(ctx);
+
+                      final playStoreUri = Uri.parse("https://play.google.com/store/apps/details?id=com.kamuradar.app");
+                      try {
+                        await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
+                      } catch (_) {}
+                    },
+                    child: const Text("Puan Ver", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _loadCachedAlarms() async {
@@ -1625,13 +1824,29 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
             // 1. Paket: Yıllık VIP (En Popüler)
             InkWell(
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(ctx);
-                setState(() => _isUserVip = true);
-                widget.onUpgradeVip?.call();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("👑 Yıllık VIP Aile Planı Aktif! Tüm 54 ilanın kilidi açıldı.")),
+                  const SnackBar(content: Text("Google Play Store güvenli satın alma penceresi açılıyor...")),
                 );
+                final success = await InAppPurchaseService.instance.buyProduct(InAppPurchaseService.yearlyVipId);
+                if (!success) {
+                  // Fallback: Aile Planı Ekranına yönlendir
+                  if (mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (c) => FamilySubscriptionScreen(
+                          isVip: _effectiveVip,
+                          onPlanPurchased: () {
+                            setState(() => _isUserVip = true);
+                            widget.onUpgradeVip?.call();
+                          },
+                        ),
+                      ),
+                    );
+                  }
+                }
               },
               child: Container(
                 padding: const EdgeInsets.all(14),
@@ -1667,13 +1882,29 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
             // 2. Paket: Aylık VIP
             InkWell(
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(ctx);
-                setState(() => _isUserVip = true);
-                widget.onUpgradeVip?.call();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("👑 Aylık VIP Aile Planı Aktif! Tüm 54 ilanın kilidi açıldı.")),
+                  const SnackBar(content: Text("Google Play Store güvenli satın alma penceresi açılıyor...")),
                 );
+                final success = await InAppPurchaseService.instance.buyProduct(InAppPurchaseService.monthlyVipId);
+                if (!success) {
+                  // Fallback: Aile Planı Ekranına yönlendir
+                  if (mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (c) => FamilySubscriptionScreen(
+                          isVip: _effectiveVip,
+                          onPlanPurchased: () {
+                            setState(() => _isUserVip = true);
+                            widget.onUpgradeVip?.call();
+                          },
+                        ),
+                      ),
+                    );
+                  }
+                }
               },
               child: Container(
                 padding: const EdgeInsets.all(12),

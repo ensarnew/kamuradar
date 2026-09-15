@@ -743,8 +743,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Uygulama Bilgisi", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFFF8FAFC))),
+          const Text("Uygulama & Yasal Bilgiler", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFFF8FAFC))),
           const SizedBox(height: 8),
+
+          // Sürüm Bilgisi
           InkWell(
             onTap: _handleVersionTap,
             borderRadius: BorderRadius.circular(8),
@@ -759,15 +761,75 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: Color(0xFF1E2D4A)),
+          const SizedBox(height: 8),
+
+          // Yasal Uyarı & Sorumluluk Reddi Butonu
+          InkWell(
+            onTap: () => _showLegalDisclaimerDialog(context),
+            borderRadius: BorderRadius.circular(8),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Icon(Icons.gavel, size: 16, color: Color(0xFFF59E0B)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Resmî Kurum Sorumluluk Reddi Beyanı", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                        Text("Devlet kurumu bağımsızlığı ve resmi kaynaklar", style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: 16, color: Color(0xFF64748B)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: Color(0xFF1E2D4A)),
+          const SizedBox(height: 12),
+
+          // Google Play'de Yıldız Verme Butonu
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E293B),
+                foregroundColor: const Color(0xFFF59E0B),
+                side: const BorderSide(color: Color(0xFFF59E0B)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: const Icon(Icons.star, color: Color(0xFFF59E0B), size: 20),
+              label: const Text(
+                "Google Play'de 5 Yıldız Ver & Destek Ol",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+              onPressed: () async {
+                final uri = Uri.parse("https://play.google.com/store/apps/details?id=com.kamuradar.app");
+                try {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } catch (_) {}
+              },
+            ),
+          ),
           const SizedBox(height: 10),
-          const Divider(height: 1),
-          const SizedBox(height: 6),
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               TextButton(
-                onPressed: () {},
-                child: const Text("Gizlilik Sözleşmesi", style: TextStyle(fontSize: 11)),
+                onPressed: () async {
+                  final uri = Uri.parse("https://kamuradar.onrender.com/privacy");
+                  try {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } catch (_) {}
+                },
+                child: const Text("Gizlilik Sözleşmesi", style: TextStyle(fontSize: 11, color: Color(0xFF38BDF8))),
               ),
               TextButton.icon(
                 icon: const Icon(Icons.help_outline, size: 14),
@@ -781,6 +843,73 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showLegalDisclaimerDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131E33),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFF59E0B))),
+        title: const Row(
+          children: [
+            Icon(Icons.gavel, color: Color(0xFFF59E0B), size: 22),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "Resmî Sorumluluk Reddi",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "KamuRadar Bağımsız Bir Takip Servisidir",
+                style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              SizedBox(height: 6),
+              Text(
+                "KamuRadar uygulaması; herhangi bir devlet kurumu, bakanlık, askeri teşkilat veya resmi kamu kuruluşu ile resmi ya da kurumsal bir bağa sahip değildir.",
+                style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, height: 1.4),
+              ),
+              SizedBox(height: 12),
+              Text(
+                "İlan ve Bilgi Kaynakları:",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+              SizedBox(height: 4),
+              Text(
+                "• T.C. Resmî Gazete (resmigazete.gov.tr)\n"
+                "• Türkiye İş Kurumu - İŞKUR (iskur.gov.tr)\n"
+                "• Strateji ve Bütçe Bşk. Kamu İlan Portalı (kamuilan.sbb.gov.tr)\n"
+                "• ÖSYM, MSÜ, Jandarma ve ilgili kurumların halka açık resmi sayfaları.",
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, height: 1.4),
+              ),
+              SizedBox(height: 12),
+              Text(
+                "Yasal Uyarı: Bu uygulama sadece açık kaynaklı ilanları listeleme ve kişisel alarm kurma amacıyla hizmet vermektedir. Kesin başvuru koşulları ve resmi başvurular yalnızca ilgili kurumun internet adresinden yapılmalıdır.",
+                style: TextStyle(color: Color(0xFFF59E0B), fontSize: 10, height: 1.3),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Kapat", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          )
         ],
       ),
     );

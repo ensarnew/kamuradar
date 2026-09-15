@@ -90,6 +90,12 @@ class Daily12PMScheduler:
                     "message": message
                 })
 
+        # 3. Her taramadan sonra tüm kullanıcılara genel bildirim fırlat: 'Yeni ilanlar listelendi hemen bak'
+        try:
+            FirebaseNotificationService.notify_daily_scan_completed(open_count=open_today_count)
+        except Exception as e:
+            print(f"Tarama bildirim hatası: {e}")
+
         duration = round(time.time() - start_time, 2)
         cls.last_run_timestamp = datetime.now().strftime("%Y-%m-%d 12:00")
         cls.last_run_stats = {

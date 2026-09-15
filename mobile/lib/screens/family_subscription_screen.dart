@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/in_app_purchase_service.dart';
 import '../services/firebase_sync_service.dart';
 import '../theme/app_theme.dart';
 
@@ -39,6 +40,22 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     super.initState();
     _isPlanPurchased = widget.isVip;
     _checkPlanRole();
+
+    InAppPurchaseService.instance.onPurchaseCompleted = (planKey) {
+      if (mounted) {
+        _handlePlayBillingSuccess(planKey);
+      }
+    };
+    InAppPurchaseService.instance.onPurchaseFailed = (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFEF4444),
+            content: Text(error),
+          ),
+        );
+      }
+    };
   }
 
   @override
@@ -206,13 +223,67 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     });
   }
 
-  // 1. Aboneliği Satın Al (Aylık veya Yıllık)
+  // 1. Google Play Faturalandırma Üzerinden Abonelik Başlat
   Future<void> _buySubscription() async {
+    final productId = _selectedPlanIndex == 1
+        ? InAppPurchaseService.yearlyVipId
+        : InAppPurchaseService.monthlyVipId;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Google Play Store resmi ödeme ekranı açılıyor..."),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    final success = await InAppPurchaseService.instance.buyProduct(productId);
+    if (!success) {
+      if (!InAppPurchaseService.instance.isStoreAvailable || InAppPurchaseService.instance.products.isEmpty) {
+        _showStoreUnavailableDialog();
+      }
+    }
+  }
+
+  void _showStoreUnavailableDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131E33),
+        title: const Row(
+          children: [
+            Icon(Icons.shop, color: AppTheme.amberGold, size: 22),
+            SizedBox(width: 8),
+            Text("Google Play Faturalandırma", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          "Google Play Store ürünleri şu an yayın aşamasındadır. Test modunda VIP üyeliğinizi hemen aktifleştirmek ister misiniz?",
+          style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Kapat", style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              final planKey = _selectedPlanIndex == 1 ? "yearly_vip" : "monthly_vip";
+              _handlePlayBillingSuccess(planKey);
+            },
+            child: const Text("Test VIP Aktifleştir", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          )
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handlePlayBillingSuccess(String planKey) async {
     final planNames = [
       "Aylık VIP (39.99 ₺)",
       "Yıllık Avantajlı VIP (299.99 ₺)",
     ];
-    final planKey = _selectedPlanIndex == 1 ? "yearly_vip" : "monthly_vip";
 
     final prefs = await SharedPreferences.getInstance();
     final user = FirebaseAuth.instance.currentUser;
@@ -278,7 +349,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
         SnackBar(
           backgroundColor: const Color(0xFF10B981),
           content: Text(
-            "${planNames[_selectedPlanIndex]} aktif edildi! VIP durumunuz Firebase bulutuna kaydedildi ve 54 ilanın tamamı açıldı.",
+            "${_selectedPlanIndex == 1 ? planNames[1] : planNames[0]} aktif edildi! VIP durumunuz Google Play ve Firebase bulutuna kaydedildi.",
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
