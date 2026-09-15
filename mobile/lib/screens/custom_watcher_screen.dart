@@ -30,6 +30,36 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
   final TextEditingController _aiPromptController = TextEditingController();
   bool _isAiProcessing = false;
 
+  static const Set<String> _ignoredGenericTerms = {
+    "alım", "alımı", "alimlari", "alımları",
+    "duyuru", "duyurular", "duyuruları", "duyurusu",
+    "ilan", "ilanlar", "ilanları", "ilanı",
+    "haber", "haberler", "haberleri",
+    "sayfa", "sayfası", "genel", "tarih", "tarihi",
+    "sözleşme", "sözleşmesi", "şartlar", "şartları",
+    "detay", "detaylar", "detayları", "bilgi", "bilgileri",
+    "kur", "tara", "bana", "olan", "için", "veya", "ile",
+    "hakkında", "iletişim", "anasayfa", "giriş", "çıkış", "menu", "ara",
+    "kılavuz", "kilavuz", "başvuru", "basvuru", "sonuç", "sonuçlar"
+  };
+
+  static String _extractVisibleText(String html) {
+    String clean = html.replaceAll(RegExp(r'<script[^>]*>[\s\S]*?</script>', caseSensitive: false), ' ');
+    clean = clean.replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false), ' ');
+    clean = clean.replaceAll(RegExp(r'<head[^>]*>[\s\S]*?</head>', caseSensitive: false), ' ');
+    clean = clean.replaceAll(RegExp(r'<noscript[^>]*>[\s\S]*?</noscript>', caseSensitive: false), ' ');
+    clean = clean.replaceAll(RegExp(r'<iframe[^>]*>[\s\S]*?</iframe>', caseSensitive: false), ' ');
+    clean = clean.replaceAll(RegExp(r'<[^>]+>'), ' ');
+    clean = clean.replaceAll('&nbsp;', ' ')
+                 .replaceAll('&amp;', '&')
+                 .replaceAll('&quot;', '"')
+                 .replaceAll('&#39;', "'")
+                 .replaceAll('&lt;', '<')
+                 .replaceAll('&gt;', '>');
+    clean = clean.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return clean.toLowerCase();
+  }
+
   final List<CustomLinkWatcher> _watchers = [
     CustomLinkWatcher(
       id: "watch-01",
@@ -37,10 +67,10 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       label: "Jandarma Uzman Erbaş Alımı Nöbetçisi",
       lastChecked12pm: "Gündüz Taraması (10:00 - 22:00)",
       hasUpdate: false,
-      aiCriteria: "Uzman Erbaş, Başvuru Kılavuzu, Sınav Sonuçları",
-      targetKeywords: ["Uzman Erbaş", "Sözleşmeli", "Kılavuz", "Başvuru"],
+      aiCriteria: "Uzman Erbaş",
+      targetKeywords: ["Uzman Erbaş"],
       isNotificationActive: true,
-      lastScannedResult: "Gündüz periyodu (10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00) nöbette",
+      lastScannedResult: "Gündüz periyodu (10:00 - 22:00) nöbette",
     ),
     CustomLinkWatcher(
       id: "watch-02",
@@ -48,10 +78,10 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       label: "MSB Personel Temin Duyurular",
       lastChecked12pm: "Gündüz Taraması (10:00 - 22:00)",
       hasUpdate: false,
-      aiCriteria: "Subay, Astsubay ve Askeri Öğrenci Duyuruları",
+      aiCriteria: "Subay, Astsubay, MSÜ",
       targetKeywords: ["Subay", "Astsubay", "MSÜ"],
       isNotificationActive: true,
-      lastScannedResult: "Gündüz periyodu (10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00) nöbette",
+      lastScannedResult: "Gündüz periyodu (10:00 - 22:00) nöbette",
     ),
   ];
 
@@ -89,9 +119,20 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       if (data != null && data.isNotEmpty) {
         final List decoded = json.decode(data);
         if (decoded.isNotEmpty && mounted) {
+          final loaded = decoded.map((item) {
+            final w = CustomLinkWatcher.fromJson(item);
+            // Eski sürümlerden veya alakasız sitelerden kalan hatalı pozitif sonuçları temizle
+            if (w.url.contains("3dtoptantr") || (w.hasUpdate && !w.url.contains("gov.tr") && !w.url.contains("edu.tr") && !w.url.contains("tsk.tr"))) {
+              return w.copyWith(
+                hasUpdate: false,
+                lastScannedResult: "❌ İlan Bulunamadı: Aradığınız kriterler bu sayfada geçmiyor.",
+              );
+            }
+            return w;
+          }).toList();
           setState(() {
             _watchers.clear();
-            _watchers.addAll(decoded.map((item) => CustomLinkWatcher.fromJson(item)).toList());
+            _watchers.addAll(loaded);
           });
         }
       }
@@ -136,39 +177,40 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       ).timeout(const Duration(seconds: 9));
 
       if (response.statusCode >= 200 && response.statusCode < 400) {
-        final bodyText = response.body.toLowerCase();
+        // Ham HTML yerine YALNIZCA ekranda görünen metni analiz et (script, css ve etiketler elenir)
+        final visibleText = _extractVisibleText(response.body);
 
-        // 1. Hedef arama terimlerini derle (YALNIZCA kullanıcının girdiği terimler)
-        final Set<String> termsToSearch = {};
+        // 1. Hedef arama terimlerini derle (YALNIZCA kullanıcının belirlediği spesifik terimler)
+        final List<String> termsToSearch = [];
         for (var k in w.targetKeywords) {
           final clean = k.trim().toLowerCase();
-          if (clean.length >= 2) termsToSearch.add(clean);
-        }
-        if (w.aiCriteria != null && w.aiCriteria!.isNotEmpty) {
-          final parts = w.aiCriteria!.toLowerCase().split(RegExp(r'[,;\s]+'));
-          for (var p in parts) {
-            final clean = p.trim();
-            if (clean.length >= 3 && !["için", "olan", "veya", "bana", "alarm", "kur", "tara", "sayfa", "genel"].contains(clean)) {
-              termsToSearch.add(clean);
-            }
+          if (clean.length >= 2 && !_ignoredGenericTerms.contains(clean)) {
+            termsToSearch.add(clean);
           }
         }
 
-        // Eğer terim yoksa başlıktaki anlamlı kelimeleri ara
+        // Eğer targetKeywords boşsa veya genel terimler elenince boş kaldıysa, başlıktan spesifik kelimeleri al
         if (termsToSearch.isEmpty) {
-          final words = w.label.toLowerCase().split(RegExp(r'\s+')).where((w) => w.length >= 3);
-          termsToSearch.addAll(words);
+          final words = w.label.toLowerCase().split(RegExp(r'[\s,\-_/]+'))
+              .map((w) => w.trim())
+              .where((w) => w.length >= 3 && !_ignoredGenericTerms.contains(w))
+              .toList();
+          if (words.isNotEmpty) {
+            termsToSearch.addAll(words);
+          } else {
+            termsToSearch.add(w.label.trim().toLowerCase());
+          }
         }
 
-        // 2. Sayfa gövdesinde YALNIZCA bu hedef terimleri ara
+        // 2. Sayfanın GÖRÜNÜR metninde YALNIZCA bu hedef terimleri ara
         final matchedTerms = <String>[];
         for (var term in termsToSearch) {
-          if (bodyText.contains(term)) {
+          if (visibleText.contains(term)) {
             matchedTerms.add(term);
           }
         }
 
-        // KESİN KURAL: Sayfada aranan terimler YOKSA asla ilan var demez!
+        // KESİN KURAL: Sayfada aranan hedef terimler YOKSA asla ilan var demez!
         if (matchedTerms.isNotEmpty) {
           hasAnnouncement = true;
           scanResult = "🎯 Aradığınız '${matchedTerms.take(3).join(", ")}' duyurusu bu sayfada bulundu! (${response.statusCode} OK)";
@@ -261,7 +303,10 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
           .where((s) => s.length >= 2)
           .toList();
     } else {
-      final words = label.trim().split(RegExp(r'\s+')).where((w) => w.length >= 3).toList();
+      final words = label.trim().split(RegExp(r'[\s,\-_/]+'))
+          .map((w) => w.trim())
+          .where((w) => w.length >= 3 && !_ignoredGenericTerms.contains(w.toLowerCase()))
+          .toList();
       finalKeywords = words.isNotEmpty ? words : [label.trim()];
     }
 
@@ -314,56 +359,56 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
         "title": "Tarım ve Orman Bakanlığı & OGM Alımları",
         "url": "https://www.tarimorman.gov.tr",
         "criteria": "Orman Muhafaza Memuru, Mühendis, Veteriner, Yangın İşçisi, Sözleşmeli Personel Alımı",
-        "keywords": ["Tarım", "Orman", "OGM", "Alım", "Kadro", "Başvuru"],
+        "keywords": ["Orman Muhafaza", "Tarım ve Orman", "OGM"],
       };
     } else if (lower.contains("itfaiye") || lower.contains("itfaye") || lower.contains("zabıta") || lower.contains("zabita") || lower.contains("belediye")) {
       return {
         "title": "Belediye İtfaiye & Zabıta Memuru Alımları",
         "url": "https://www.turkiye.gov.tr",
         "criteria": "İtfaiye Eri, Zabıta Memuru Alımı, Parkur Sınavı ve KPSS Taban Puanı",
-        "keywords": ["İtfaiye", "Zabıta", "Belediye", "Parkur", "KPSS"],
+        "keywords": ["İtfaiye Eri", "Zabıta Memuru"],
       };
     } else if (lower.contains("green card") || lower.contains("greencard") || lower.contains("dv-") || lower.contains("amerika")) {
       return {
         "title": "ABD Resmî Green Card (DV Lottery) Başvurusu",
         "url": "https://dvprogram.state.gov",
         "criteria": "DV Çekiliş Başvuru Tarihleri, Form Girişi, Sonuç Açıklama Duyurusu",
-        "keywords": ["Green Card", "DV Lottery", "Entry", "Results", "State Gov"],
+        "keywords": ["Green Card", "DV Lottery"],
       };
     } else if (lower.contains("polis") || lower.contains("pomem") || lower.contains("pmyo") || lower.contains("bekçi") || lower.contains("bekci")) {
       return {
         "title": "Emniyet & Polis Akademisi (POMEM/PMYO) Alımları",
         "url": "https://www.pa.edu.tr",
         "criteria": "POMEM Polis Memuru, Bekçilik Alım Kılavuzu, Parkur ve Mülakat Tarihleri",
-        "keywords": ["POMEM", "PMYO", "Polis", "Bekçi", "Kılavuz"],
+        "keywords": ["POMEM", "PMYO", "Polis Akademisi", "Bekçi"],
       };
     } else if (lower.contains("sağlık") || lower.contains("saglik") || lower.contains("hemşire") || lower.contains("hemsire") || lower.contains("ebe")) {
       return {
         "title": "Sağlık Bakanlığı Personel Alımı & ÖSYM Tercih",
         "url": "https://yhgm.saglik.gov.tr",
         "criteria": "Sözleşmeli Sağlık Personeli (Hemşire, Ebe, Tekniker), İŞKUR Sürekli İşçi Alımı",
-        "keywords": ["Sağlık", "Hemşire", "Atama", "ÖSYM", "Tercih"],
+        "keywords": ["Sağlık Bakanlığı", "Hemşire", "Ebe"],
       };
     } else if (lower.contains("adalet") || lower.contains("katip") || lower.contains("ikm") || lower.contains("gardiyan") || lower.contains("cte")) {
       return {
         "title": "Adalet Bakanlığı & CTE Personel Alımı",
         "url": "https://pgm.adalet.gov.tr",
         "criteria": "İnfaz Koruma Memuru (İKM), Zabıt Katibi Klavye Sınavı, Mübaşir Alımı",
-        "keywords": ["Adalet", "İKM", "Zabıt Katibi", "Klavye", "CTE"],
+        "keywords": ["İnfaz Koruma", "Zabıt Katibi", "Mübaşir"],
       };
     } else if (lower.contains("öğretmen") || lower.contains("ogretmen") || lower.contains("meb")) {
       return {
         "title": "MEB Sözleşmeli Öğretmenlik Atamaları",
         "url": "https://ilkatama.meb.gov.tr",
         "criteria": "Öğretmenlik Branş Kontenjanları, Sözlü Sınav ve Tercih Başvuruları",
-        "keywords": ["MEB", "Öğretmen", "Kontenjan", "Mülakat", "Atama"],
+        "keywords": ["Sözleşmeli Öğretmen", "Öğretmen Atama"],
       };
     } else if (lower.contains("jandarma") || lower.contains("uzman")) {
       return {
         "title": "Jandarma Uzman Erbaş Alımı Nöbetçisi",
         "url": "https://vatandas.jandarma.gov.tr/PTM/Giris",
         "criteria": "Uzman Erbaş, Başvuru Kılavuzu, Sınav Sonuçları",
-        "keywords": ["Uzman Erbaş", "Sözleşmeli", "Kılavuz", "Başvuru"],
+        "keywords": ["Uzman Erbaş", "Jandarma"],
       };
     } else {
       // Kullanıcının yazdığı her özel metinden dinamik başlık ve kural üret
@@ -920,7 +965,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                     "Jandarma Uzman Erbaş",
                     "https://vatandas.jandarma.gov.tr/PTM/Giris",
                     aiCriteria: "Uzman Erbaş Alımı",
-                    targetKeywords: ["Uzman Erbaş", "Sözleşmeli", "Kılavuz"],
+                    targetKeywords: ["Uzman Erbaş", "Jandarma"],
                   ),
                   child: const Text("+ Jandarma PTM", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
@@ -938,7 +983,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                     "MSB Personel Temin",
                     "https://personeltemin.msb.gov.tr",
                     aiCriteria: "Askeri Personel Alımları",
-                    targetKeywords: ["Subay", "Astsubay", "Uzman"],
+                    targetKeywords: ["Subay", "Astsubay", "MSÜ"],
                   ),
                   child: const Text("+ MSB Temin", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
@@ -947,7 +992,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Liste
+          // Liste Başlığı ve Eylemler
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -955,17 +1000,53 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                 "Nöbet Tutulan Web Sayfaları",
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFFF8FAFC)),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF131E33),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF1E2D4A)),
-                ),
-                child: Text(
-                  "${_watchers.length} Sayfa Nöbette",
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
-                ),
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      for (var watcher in _watchers) {
+                        _scanWatcher(watcher);
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: Color(0xFF2563EB),
+                          content: Text("Tüm nöbetçi sayfalar canlı olarak taranıyor...", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF38BDF8)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.refresh, size: 12, color: Color(0xFF38BDF8)),
+                          SizedBox(width: 4),
+                          Text(
+                            "Tümünü Tara",
+                            style: TextStyle(fontSize: 10, color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF131E33),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF1E2D4A)),
+                    ),
+                    child: Text(
+                      "${_watchers.length} Sayfa",
+                      style: const TextStyle(fontSize: 10, color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
