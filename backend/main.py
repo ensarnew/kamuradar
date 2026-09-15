@@ -28,6 +28,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ----------------- 0. SAĞLIK KONTROLÜ (RENDER HEALTH CHECK) -----------------
+
+@app.get("/")
+@app.head("/")
+def health_check():
+    """Render ve izleme servisleri için ana sağlık kontrolü rotası."""
+    return {
+        "status": "ok",
+        "service": "KamuRadar API",
+        "version": "2.0.0",
+        "endpoints": {
+            "docs": "/docs",
+            "exam_schedules": "/api/exam-schedules",
+            "open_announcements": "/api/announcements/open"
+        }
+    }
+
 # ----------------- 1. SINAV TAKVİMİ & BAŞVURU ZAMANLARI (10 ADET) -----------------
 
 @app.get("/api/exam-schedules", response_model=List[ExamScheduleItem])
