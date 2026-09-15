@@ -26,6 +26,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
   late bool _isUserVip;
   final TextEditingController _labelController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
+  final TextEditingController _keywordsController = TextEditingController();
   final TextEditingController _aiPromptController = TextEditingController();
   bool _isAiProcessing = false;
 
@@ -137,7 +138,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       if (response.statusCode >= 200 && response.statusCode < 400) {
         final bodyText = response.body.toLowerCase();
 
-        // 1. Hedef anahtar kelimeleri derle
+        // 1. Hedef arama terimlerini derle (YALNIZCA kullanıcının girdiği terimler)
         final Set<String> termsToSearch = {};
         for (var k in w.targetKeywords) {
           final clean = k.trim().toLowerCase();
@@ -147,13 +148,19 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
           final parts = w.aiCriteria!.toLowerCase().split(RegExp(r'[,;\s]+'));
           for (var p in parts) {
             final clean = p.trim();
-            if (clean.length >= 3 && !["için", "olan", "veya", "bana", "alarm", "kur", "tara"].contains(clean)) {
+            if (clean.length >= 3 && !["için", "olan", "veya", "bana", "alarm", "kur", "tara", "sayfa", "genel"].contains(clean)) {
               termsToSearch.add(clean);
             }
           }
         }
 
-        // 2. Gerçek HTML içerisinde kelime ara
+        // Eğer terim yoksa başlıktaki anlamlı kelimeleri ara
+        if (termsToSearch.isEmpty) {
+          final words = w.label.toLowerCase().split(RegExp(r'\s+')).where((w) => w.length >= 3);
+          termsToSearch.addAll(words);
+        }
+
+        // 2. Sayfa gövdesinde YALNIZCA bu hedef terimleri ara
         final matchedTerms = <String>[];
         for (var term in termsToSearch) {
           if (bodyText.contains(term)) {
@@ -161,27 +168,22 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
           }
         }
 
-        // 3. Genel kamu ilanı kalıpları
-        final generalTerms = ["personel alımı", "başvuru", "kılavuz", "duyuru", "kontenjan", "mülakat", "sonuç", "giriş sınavı", "uzman erbaş", "astsubay"];
-        final matchedGeneral = generalTerms.where((g) => bodyText.contains(g)).take(2).toList();
-
+        // KESİN KURAL: Sayfada aranan terimler YOKSA asla ilan var demez!
         if (matchedTerms.isNotEmpty) {
           hasAnnouncement = true;
-          scanResult = "🎯 Aktif Duyuru Tespit Edildi: '${matchedTerms.take(3).join(", ")}' (${response.statusCode} OK)";
-        } else if (matchedGeneral.isNotEmpty && termsToSearch.isEmpty) {
-          hasAnnouncement = true;
-          scanResult = "🔔 İlan/Duyuru Algılandı: Sayfada '${matchedGeneral.join(", ")}' terimleri aktif.";
+          scanResult = "🎯 Aradığınız '${matchedTerms.take(3).join(", ")}' duyurusu bu sayfada bulundu! (${response.statusCode} OK)";
         } else {
           hasAnnouncement = false;
-          scanResult = "Sayfa Stabil: Siteye bağlanıldı (${response.statusCode} OK), aranan kriterlerde yeni ilan bulunamadı.";
+          final wantedStr = termsToSearch.take(4).join(", ");
+          scanResult = "❌ İlan Bulunamadı: Sayfa incelendi (${response.statusCode} OK). Aradığınız '$wantedStr' terimleri bu web sayfasında geçmiyor.";
         }
       } else {
         hasAnnouncement = false;
-        scanResult = "Sunucu Yanıtı: HTTP ${response.statusCode}. Sayfa içeriği alınamadı.";
+        scanResult = "Sunucu Hatası: Web sitesi HTTP ${response.statusCode} yanıtı verdi. Sayfa açılamadı.";
       }
     } catch (e) {
       hasAnnouncement = false;
-      scanResult = "Bağlantı Kurulamadı: Web adresine erişilemedi veya adres geçersiz ($e)";
+      scanResult = "Bağlantı Kurulamadı: Web adresine erişilemedi veya adres geçersiz.";
     }
 
     if (mounted) {
@@ -246,36 +248,54 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
     }
   }
 
-  void _addWatcher(String label, String url, {String? aiCriteria, List<String>? targetKeywords}) {
+  void _addWatcher(String label, String url, {String? aiCriteria, List<String>? targetKeywords, String? keywordsRaw}) {
     if (label.isEmpty || url.isEmpty) return;
+
+    List<String> finalKeywords = [];
+    if (targetKeywords != null && targetKeywords.isNotEmpty) {
+      finalKeywords = targetKeywords;
+    } else if (keywordsRaw != null && keywordsRaw.trim().isNotEmpty) {
+      finalKeywords = keywordsRaw
+          .split(RegExp(r'[,;\n]+'))
+          .map((s) => s.trim())
+          .where((s) => s.length >= 2)
+          .toList();
+    } else {
+      final words = label.trim().split(RegExp(r'\s+')).where((w) => w.length >= 3).toList();
+      finalKeywords = words.isNotEmpty ? words : [label.trim()];
+    }
+
+    final newWatcher = CustomLinkWatcher(
+      id: "watch-${DateTime.now().millisecondsSinceEpoch}",
+      label: label.trim(),
+      url: url.trim(),
+      lastChecked12pm: "Gündüz Taraması (10:00 - 22:00)",
+      hasUpdate: false,
+      aiCriteria: aiCriteria ?? finalKeywords.join(", "),
+      targetKeywords: finalKeywords,
+      isNotificationActive: true,
+      lastScannedResult: "Yeni eklendi - Şimdi taranıyor...",
+    );
+
     setState(() {
-      _watchers.insert(
-        0,
-        CustomLinkWatcher(
-          id: "watch-${DateTime.now().millisecondsSinceEpoch}",
-          label: label,
-          url: url,
-          lastChecked12pm: "Gündüz Taraması (10:00 - 22:00)",
-          hasUpdate: false,
-          aiCriteria: aiCriteria ?? "Genel Sayfa Değişikliği",
-          targetKeywords: targetKeywords ?? ["Duyuru", "Alım", "Sonuç"],
-          isNotificationActive: true,
-          lastScannedResult: "Yeni eklendi - 'Şimdi Tara' ile kontrol edin",
-        ),
-      );
+      _watchers.insert(0, newWatcher);
       _labelController.clear();
       _urlController.clear();
+      _keywordsController.clear();
     });
     _saveWatchers();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: const Color(0xFF10B981),
         content: Text(
-          "'$label' RadarAI ile takibe alındı! Firebase ve telefona kaydedildi.",
+          "'$label' takibe alındı! Sayfa canlı taranıyor...",
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );
+
+    _scanWatcher(newWatcher);
   }
 
   Map<String, dynamic> _parseAlarmIntent(String text) {
@@ -806,7 +826,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                   controller: _urlController,
                   style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 12, fontWeight: FontWeight.bold),
                   decoration: InputDecoration(
-                    hintText: "https://vatandas.jandarma.gov.tr/PTM/Giris",
+                    hintText: "Web Adresi (Örn: https://vatandas.jandarma.gov.tr/...)",
                     hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
                     filled: true,
                     fillColor: const Color(0xFF091122),
@@ -825,6 +845,35 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _keywordsController,
+                  style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 12, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    hintText: "Aranacak Terimler (Örn: Jandarma, Uzman Erbaş, Başvuru)",
+                    hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                    filled: true,
+                    fillColor: const Color(0xFF091122),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFF1E2D4A)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFF1E2D4A)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFF38BDF8)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  "ℹ️ Bot bu sayfayı tararken YALNIZCA girdiğiniz bu terimleri arar. Sayfada bu kelimeler yoksa asla ilan var demez.",
+                  style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10),
+                ),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
@@ -835,9 +884,13 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onPressed: () => _addWatcher(_labelController.text, _urlController.text),
+                    onPressed: () => _addWatcher(
+                      _labelController.text,
+                      _urlController.text,
+                      keywordsRaw: _keywordsController.text,
+                    ),
                     child: const Text(
-                      "Manuel Takibe Al (Gündüz Taraması)",
+                      "Manuel Takibe Al & Şimdi Tara",
                       style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
                     ),
                   ),
