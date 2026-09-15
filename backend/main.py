@@ -81,10 +81,12 @@ def get_open_announcements(
     if kpss_status:
         all_announcements = [a for a in all_announcements if a.kpss_status and a.kpss_status.lower() == kpss_status.lower()]
 
+    FREE_ANNOUNCEMENT_IDS = {"ann-01", "ann-02", "ann-03", "ann-04"}
+
     results = []
-    for index, a in enumerate(all_announcements):
-        if is_premium or index < 4:
-            # Kullanıcı Premium veya ilk 4 ücretsiz ilandan biri
+    for a in all_announcements:
+        if is_premium or a.id in FREE_ANNOUNCEMENT_IDS:
+            # Kullanıcı Premium veya sabit ücretsiz ilanlardan biri
             item_dict = a.dict()
             item_dict["is_locked"] = False
             results.append(item_dict)
