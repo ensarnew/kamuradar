@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 from models import (
-    Announcement, AnnouncementCategory, CustomUrlWatcher,
+    Announcement, AnnouncementCategory, ContentType, CustomUrlWatcher,
     FamilyPlan, ExamScheduleItem, RadarAIChatRequest, RadarAIChatResponse
 )
 from database import db
@@ -58,7 +58,10 @@ def get_exam_schedules():
 @app.get("/api/announcements/open")
 def get_open_announcements(
     user_id: str = "user-guest",
-    category: Optional[AnnouncementCategory] = None
+    category: Optional[str] = None,
+    content_type: Optional[ContentType] = None,
+    education_level: Optional[str] = None,
+    kpss_status: Optional[str] = None
 ):
     """
     Açık ilanları listeler.
@@ -70,7 +73,13 @@ def get_open_announcements(
     all_announcements = list(db.announcements.values())
 
     if category:
-        all_announcements = [a for a in all_announcements if a.category == category]
+        all_announcements = [a for a in all_announcements if a.category.lower() == category.lower() or category.lower() in a.category.lower()]
+    if content_type:
+        all_announcements = [a for a in all_announcements if a.content_type == content_type]
+    if education_level:
+        all_announcements = [a for a in all_announcements if a.education_level and education_level.lower() in a.education_level.lower()]
+    if kpss_status:
+        all_announcements = [a for a in all_announcements if a.kpss_status and a.kpss_status.lower() == kpss_status.lower()]
 
     results = []
     for index, a in enumerate(all_announcements):
@@ -86,6 +95,10 @@ def get_open_announcements(
                 "title": a.title,
                 "organization": a.organization,
                 "category": a.category,
+                "content_type": a.content_type,
+                "education_level": a.education_level,
+                "kpss_status": a.kpss_status,
+                "exam_date": a.exam_date,
                 "summary": "🔒 Bu ilanın başvuru şartları, kılavuz detayları ve resmî başvuru adresi sadece Premium üyelere açıktır.",
                 "requirements": ["Premium Üyelere Özel"],
                 "application_start": a.application_start,
@@ -102,7 +115,7 @@ def get_open_announcements(
     return {
         "user_is_premium": is_premium,
         "total_count": len(all_announcements),
-        "unlocked_count": len(all_announcements) if is_premium else 4,
+        "unlocked_count": len(all_announcements) if is_premium else min(4, len(all_announcements)),
         "announcements": results
     }
 

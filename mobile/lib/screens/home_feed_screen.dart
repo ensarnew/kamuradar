@@ -34,6 +34,11 @@ class ChannelAlarm {
   final String officialUrl;
   final IconData logoIcon;
   bool isAlarmActive;
+  final String contentType;     // 'ILAN', 'SINAV', 'MULAKAT', 'SONUC'
+  final String category;        // Askeri & Emniyet, Bakanlıklar, Belediyeler & Mahalli İdareler, vb.
+  final String educationLevel;  // Okuryazar, Lise, Ön Lisans, Lisans
+  final String kpssStatus;      // KPSS'li, KPSS'siz, Muaf
+  final String? examDate;
 
   Color get statusColor {
     switch (status) {
@@ -72,6 +77,11 @@ class ChannelAlarm {
     required this.officialUrl,
     this.logoIcon = Icons.local_hospital,
     this.isAlarmActive = false,
+    this.contentType = "ILAN",
+    this.category = "Bakanlıklar",
+    this.educationLevel = "Lisans",
+    this.kpssStatus = "KPSS'li",
+    this.examDate,
   }) : position = position ?? title;
 }
 
@@ -447,6 +457,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Hemşire, ebe, sağlık teknikeri, büro personeli ve güvenlik alımları ÖSYM/İŞKUR üzerinden alınıyor.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.local_hospital,
       isAlarmActive: true,
@@ -472,6 +486,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Lisans ve önlisans mezunu adaylar için 32. Dönem POMEM fiziki yeterlilik ve başvuru takvimi başladı.",
+      contentType: "ILAN",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "15.10.2026",
       officialUrl: "https://pa.edu.tr",
       logoIcon: Icons.local_police,
       isAlarmActive: true,
@@ -497,6 +516,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Adliyeler ve CTE cezaevleri için KPSS 70 taban puanla personel alım başvuruları e-Devlet kapısında.",
+      contentType: "MULAKAT",
+      category: "Bakanlıklar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "20.10.2026",
       officialUrl: "https://pgm.adalet.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -522,6 +546,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "En az lise mezunu 27 yaşını doldurmamış adaylar arasından komando ve asayiş uzman erbaş alımı.",
+      contentType: "ILAN",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'li",
+      examDate: "12.11.2026",
       officialUrl: "https://vatandas.jandarma.gov.tr",
       logoIcon: Icons.shield,
       isAlarmActive: false,
@@ -547,6 +576,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "İl emniyet müdürlükleri bünyesinde istihdam edilmek üzere en az lise mezunu erkek bekçi alımı.",
+      contentType: "ILAN",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'siz",
+      examDate: "05.10.2026",
       officialUrl: "https://pa.edu.tr",
       logoIcon: Icons.local_police,
       isAlarmActive: false,
@@ -572,6 +606,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "İİBF, SBF ve Hukuk fakültesi mezunları için 81 il taşra teşkilatına GUY alımı başvuruları açık.",
+      contentType: "SINAV",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "24.10.2026",
       officialUrl: "https://gib.gov.tr",
       logoIcon: Icons.account_balance,
       isAlarmActive: false,
@@ -597,6 +636,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Sayıştay Başkanlığı denetçi yardımcısı adayı eleme sınavı başvuruları ÖSYM AIS üzerinden açık.",
+      contentType: "SINAV",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "18.10.2026",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.account_balance,
       isAlarmActive: false,
@@ -622,6 +666,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "En az ilköğretim mezunu 25 yaşını bitirmemiş vatandaşlar için sözleşmeli erbaş/er temin başvurusu.",
+      contentType: "ILAN",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'siz",
       officialUrl: "https://personeltemin.msb.gov.tr",
       logoIcon: Icons.military_tech,
       isAlarmActive: false,
@@ -647,6 +695,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Branş bazında kontenjan dağılımı yayımlandı; öğretmen adayları için tercih süreci e-Devlet üzerinden sürüyor.",
+      contentType: "MULAKAT",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "28.09.2026",
       officialUrl: "https://ilkatama.meb.gov.tr",
       logoIcon: Icons.school,
       isAlarmActive: false,
@@ -672,6 +725,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "2026-2027 Eğitim öğretim yılı için 81 il genelinde MEB bünyesinde TYP temizlik ve güvenlik alımı.",
+      contentType: "ILAN",
+      category: "İŞKUR & Kamu İşçi",
+      educationLevel: "Okuryazar",
+      kpssStatus: "KPSS'siz",
       officialUrl: "https://esube.iskur.gov.tr",
       logoIcon: Icons.school,
       isAlarmActive: false,
@@ -697,6 +754,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "KYK yurtlarında görevlendirilmek üzere lisans ve önlisans mezunları için sözleşmeli personel alımı.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://isealimkariyerkapisi.cbiko.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -722,6 +783,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Kadın ve erkek adaylar için KPSS puanı ve boy-kilo şartıyla memur kadroları başvuruları başladı.",
+      contentType: "ILAN",
+      category: "Belediyeler & Mahalli İdareler",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "14.10.2026",
       officialUrl: "https://turkiye.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -747,6 +813,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Diyanet İşleri Başkanlığı Kur'an kursu öğreticisi, imam-hatip ve müezzin-kayyım kadroları sınavı.",
+      contentType: "SINAV",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "22.09.2026",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -772,6 +843,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Mülki İdare Amirliği Hizmetleri Sınıfı için 100 kaymakam adayı sınavı takvimi ve şartları.",
+      contentType: "SINAV",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "01.11.2026",
       officialUrl: "https://icisleri.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -797,6 +873,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "1.000 adli yargı, 100 avukatlık adli yargı ve 100 idari yargı hakim yardımcısı yazılı sınav başvurusu.",
+      contentType: "SINAV",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "21.11.2026",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -822,6 +903,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Deniz Kuvvetleri Komutanlığı yüzer ve kıyı birlikleri için sözleşmeli personel alım dönemi.",
+      contentType: "ILAN",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'siz",
       officialUrl: "https://personeltemin.msb.gov.tr",
       logoIcon: Icons.military_tech,
       isAlarmActive: false,
@@ -847,6 +932,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Lisans mezunları arasından ilk derece amir eğitimi için komiser yardımcısı adayı temini.",
+      contentType: "SINAV",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "28.11.2026",
       officialUrl: "https://pa.edu.tr",
       logoIcon: Icons.local_police,
       isAlarmActive: false,
@@ -872,6 +962,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "JSGA bünyesinde istihdam edilmek üzere kadın ve erkek subay/astsubay alım takvimi.",
+      contentType: "MULAKAT",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "15.11.2026",
       officialUrl: "https://vatandas.jandarma.gov.tr",
       logoIcon: Icons.shield,
       isAlarmActive: false,
@@ -897,6 +992,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Bölge müdürlüklerine inşaat, ziraat, makine ve harita mühendisliği kadroları için alım duyurusu.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://dsi.gov.tr",
       logoIcon: Icons.park,
       isAlarmActive: false,
@@ -922,6 +1021,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Kış bakım hazırlıkları kapsamında Türkiye geneli bölge şefliklerine sürekli işçi alımı.",
+      contentType: "ILAN",
+      category: "İŞKUR & Kamu İşçi",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'siz",
       officialUrl: "https://kgm.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -947,6 +1050,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "KPSS P23 ve P47 puan türlerinden mülakat usulüyle SGK denetmen yardımcısı alımı süreci.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "05.12.2026",
       officialUrl: "https://sgk.gov.tr",
       logoIcon: Icons.account_balance,
       isAlarmActive: false,
@@ -972,6 +1080,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Sınır kapıları ve havalimanı gümrük müdürlükleri için fiziki parkur ve mülakatlı alım ilanı.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://ticaret.gov.tr",
       logoIcon: Icons.account_balance,
       isAlarmActive: false,
@@ -997,6 +1109,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Sosyal hizmet, psikoloji, sosyoloji ve çocuk gelişimi mezunları için ASDEP alımları.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://aile.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1022,6 +1138,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Sonbahar dönemi YDS başvuruları ÖSYM Aday İşlemleri Sistemi üzerinden alınacaktır.",
+      contentType: "SINAV",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Lisans",
+      kpssStatus: "Muaf",
+      examDate: "03.11.2026",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1047,6 +1168,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Yılın son ALES sınavı için başvuru takvimi ve sınav merkezi seçimi.",
+      contentType: "SINAV",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Lisans",
+      kpssStatus: "Muaf",
+      examDate: "17.11.2026",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1072,6 +1198,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Meslek yüksekokulu ve meslek lisesi mezunları için İŞKUR üzerinden sürekli işçi alımı.",
+      contentType: "ILAN",
+      category: "KİT & Bankalar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://tcddtasimacilik.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1097,6 +1227,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "A grubu memurluk ve öğretmenlik kadroları için lisans sınav sonuçları ÖSYM sonuc sayfasında erişime açıldı.",
+      contentType: "SONUC",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://sonuc.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1122,6 +1256,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Eylül ayında tamamlanan önlisans memurluk sınavı sonuçları açıklanma aşamasında.",
+      contentType: "SONUC",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://sonuc.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1147,6 +1285,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Boş kalan üniversite kontenjanları için yapılan ek tercih yerleştirme sonuçları duyuruldu.",
+      contentType: "SONUC",
+      category: "Üniversiteler & Akademik",
+      educationLevel: "Lise",
+      kpssStatus: "Muaf",
       officialUrl: "https://sonuc.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1172,6 +1314,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "YKS puanıyla alım yapılan 2026 PMYO mülakat ve fiziki yeterlilik asil/yedek sonuçları açıklandı.",
+      contentType: "SONUC",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'siz",
       officialUrl: "https://pa.edu.tr",
       logoIcon: Icons.local_police,
       isAlarmActive: false,
@@ -1197,6 +1343,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Milli Savunma Üniversitesi Kara, Hava, Deniz Harp Okulları boş kontenjan çağrı sonuçları.",
+      contentType: "SONUC",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'siz",
       officialUrl: "https://personeltemin.msb.gov.tr",
       logoIcon: Icons.military_tech,
       isAlarmActive: false,
@@ -1222,6 +1372,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Kimyager, laborant, biyolog ve otopsi teknisyeni kadroları için asil/yedek liste yayımlandı.",
+      contentType: "SONUC",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://atk.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1247,6 +1401,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Müdür ve müdür yardımcılığı yazılı sınavı kesin değerlendirme sonuçları erişime açıldı.",
+      contentType: "SONUC",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Lisans",
+      kpssStatus: "Muaf",
       officialUrl: "https://sonuc.osym.gov.tr",
       logoIcon: Icons.school,
       isAlarmActive: false,
@@ -1272,6 +1430,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "DUS 1. dönem uzmanlık eğitimi yerleştirme sonuçları sorgulama ekranı.",
+      contentType: "SONUC",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Lisans",
+      kpssStatus: "Muaf",
       officialUrl: "https://sonuc.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1297,6 +1459,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Klinik ve temel tıp bilimleri branş sıralaması ve puan sorgulama ekranı.",
+      contentType: "SONUC",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Lisans",
+      kpssStatus: "Muaf",
       officialUrl: "https://sonuc.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1322,6 +1488,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Adalet komisyonları tarafından İnfaz Koruma Memurluğu fiziki ölçüm sonuç listeleri yayımlandı.",
+      contentType: "MULAKAT",
+      category: "Bakanlıklar",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'li",
+      examDate: "02.10.2026",
       officialUrl: "https://cte.adalet.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1347,6 +1518,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Bölge müdürlükleri bazında KPSS puan sıralaması asil aday listeleri açıklandı.",
+      contentType: "SONUC",
+      category: "KİT & Bankalar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://vgm.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1372,6 +1547,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Eğitim birliklerine katılmayan adayların yerine 2. yedek planlaması tamamlandı.",
+      contentType: "SONUC",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://vatandas.jandarma.gov.tr",
       logoIcon: Icons.shield,
       isAlarmActive: false,
@@ -1397,6 +1576,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Kamu personeli seçme sınavı lisans başvuruları Mayıs 2026'da tamamlanmış ve sınav yapılmıştır.",
+      contentType: "SINAV",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Lisans",
+      kpssStatus: "Muaf",
+      examDate: "19.07.2026",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1422,6 +1606,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Önlisans mezunları için başvuru süreci Temmuz 2026'da tamamlanmıştır.",
+      contentType: "SINAV",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "Muaf",
+      examDate: "01.09.2026",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1447,6 +1636,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Lise mezunu adaylar için 2 yılda bir yapılan KPSS başvuruları Ağustos 2026'da sona erdi.",
+      contentType: "SINAV",
+      category: "ÖSYM & Sınavlar",
+      educationLevel: "Lise",
+      kpssStatus: "Muaf",
+      examDate: "15.09.2026",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1472,6 +1666,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "TYT, AYT ve YDT oturumları başvuruları Şubat 2026'da tamamlandı; yerleştirmeler yapıldı.",
+      contentType: "SINAV",
+      category: "Üniversiteler & Akademik",
+      educationLevel: "Lise",
+      kpssStatus: "Muaf",
+      examDate: "20.06.2026",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.assignment,
       isAlarmActive: false,
@@ -1497,6 +1696,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Harp Okulları ve Astsubay MYO yazılı sınavı başvuruları Ocak 2026'da tamamlandı.",
+      contentType: "SINAV",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lise",
+      kpssStatus: "Muaf",
+      examDate: "05.04.2026",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.military_tech,
       isAlarmActive: false,
@@ -1522,6 +1726,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "YKS TYT ham puanıyla yapılan PMYO başvuruları Temmuz 2026'da tamamlanmıştır.",
+      contentType: "ILAN",
+      category: "Askeri & Emniyet",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'siz",
       officialUrl: "https://pa.edu.tr",
       logoIcon: Icons.local_police,
       isAlarmActive: false,
@@ -1547,6 +1755,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Yılın ilk dönem merkezi sağlık personeli atamaları Mart 2026'da tamamlandı.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://ais.osym.gov.tr",
       logoIcon: Icons.local_hospital,
       isAlarmActive: false,
@@ -1572,6 +1784,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Danıştay merkez teşkilatı için sözleşmeli personel istihdam süreci tamamlandı.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://danistay.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1597,6 +1813,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Yargıtay hizmet binalarında istihdam edilecek personel başvuruları kapandı.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://yargitay.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1622,6 +1842,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "81 il AFAD müdürlükleri için fiziki parkur ve mülakatlı alım süreci tamamlandı.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://afad.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1647,6 +1871,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "İmam-hatip, müezzin ve Kur'an kursu öğreticisi alım süreci Nisan 2026'da tamamlandı.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://diyanet.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1672,6 +1900,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Orman yangınlarıyla mücadele sezonu öncesi istihdam edilen geçici ve daimi işçi alımı.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Lise",
+      kpssStatus: "KPSS'siz",
       officialUrl: "https://ogm.gov.tr",
       logoIcon: Icons.park,
       isAlarmActive: false,
@@ -1697,6 +1929,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Savunma sanayii ve yazılım projelerinde istihdam edilmek üzere personel alımı tamamlandı.",
+      contentType: "ILAN",
+      category: "Üniversiteler & Akademik",
+      educationLevel: "Lisans",
+      kpssStatus: "Muaf",
       officialUrl: "https://kariyer.tubitak.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1722,6 +1958,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Deprem bölgesi ve büyükşehirlerde kentsel dönüşüm faaliyetleri için memur alımı kapandı.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://csb.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1747,6 +1987,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Üniversite kampüsleri ve yurtlar için İŞKUR kura çekimiyle yapılan işçi alımı.",
+      contentType: "ILAN",
+      category: "İŞKUR & Kamu İşçi",
+      educationLevel: "Okuryazar",
+      kpssStatus: "KPSS'siz",
       officialUrl: "https://gsb.gov.tr",
       logoIcon: Icons.gavel,
       isAlarmActive: false,
@@ -1772,14 +2016,358 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       "Belirtilen öğrenim ve mezuniyet şartlarını eksiksiz taşımak.",
       ],
       description: "Kazı başkanlıkları ve müzelerde istihdam edilmek üzere sözleşmeli personel atamaları kapandı.",
+      contentType: "ILAN",
+      category: "Bakanlıklar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
       officialUrl: "https://ktb.gov.tr",
       logoIcon: Icons.gavel,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "ankara-itfaiye-01",
+      organization: "Ankara Büyükşehir Belediyesi",
+      title: "ABB 300 İtfaiye Eri ve Zabıta Memuru Alımı",
+      position: "300 İtfaiye Eri & Zabıta",
+      city: "Ankara",
+      date: "12.09.2026",
+      quota: "300",
+      deadline: "29.09.2026",
+      applicationPlace: "ABB Kariyer Portalı",
+      employmentType: "657 Sayılı Memur",
+      applicationType: "Online Başvuru",
+      status: "Açık",
+      contentType: "ILAN",
+      category: "Belediyeler & Mahalli İdareler",
+      educationLevel: "Ön Lisans",
+      kpssStatus: "KPSS'li",
+      requirements: const [
+        "En az önlisans mezunu olmak.",
+        "KPSS P93 puan türünden en az 65 almak.",
+        "Erkeklerde en az 1.67m boyunda olmak.",
+        "30 yaşını doldurmamış olmak.",
+      ],
+      description: "Ankara Büyükşehir Belediyesi İtfaiye Daire Başkanlığı bünyesinde istihdam edilmek üzere memur alımı.",
+      officialUrl: "https://ankara.bel.tr",
+      logoIcon: Icons.local_fire_department,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "itu-arastirma-01",
+      organization: "İstanbul Teknik Üniversitesi",
+      title: "İTÜ 45 Araştırma ve Öğretim Görevlisi Alımı",
+      position: "45 Araştırma & Öğretim Görevlisi",
+      city: "İstanbul",
+      date: "10.09.2026",
+      quota: "45",
+      deadline: "26.09.2026",
+      applicationPlace: "İTÜ Personel Daire Bşk.",
+      employmentType: "Akademik Kadro",
+      applicationType: "Şahsen / Posta",
+      status: "Açık",
+      contentType: "ILAN",
+      category: "Üniversiteler & Akademik",
+      educationLevel: "Lisans",
+      kpssStatus: "Muaf",
+      examDate: "05.10.2026",
+      requirements: const [
+        "İlgili lisans/yüksek lisans programından mezun olmak.",
+        "ALES'ten en az 70 puan almış olmak.",
+        "YDS veya dengi yabancı dil sınavından en az 50 puan almış olmak.",
+      ],
+      description: "Mühendislik, Mimarlık ve Fen Edebiyat fakültelerine 2547 sayılı kanun uyarınca akademik personel temini.",
+      officialUrl: "https://itu.edu.tr",
+      logoIcon: Icons.school,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "dhmi-atc-01",
+      organization: "Devlet Hava Meydanları İşletmesi (DHMİ)",
+      title: "DHMİ 120 Stajyer Hava Trafik Kontrolörü (ATC) Giriş Sınavı",
+      position: "120 Stajyer Hava Trafik Kontrolörü",
+      city: "Tüm Havalimanları",
+      date: "08.09.2026",
+      quota: "120",
+      deadline: "24.09.2026",
+      applicationPlace: "Kariyer Kapısı",
+      employmentType: "KİT Sözleşmeli Personel (399/II)",
+      applicationType: "Online Başvuru",
+      status: "Açık",
+      contentType: "SINAV",
+      category: "KİT & Bankalar",
+      educationLevel: "Lisans",
+      kpssStatus: "KPSS'li",
+      examDate: "15.10.2026",
+      requirements: const [
+        "Fakülte veya 4 yıllık yüksekokul mezunu olmak.",
+        "KPSS P3 puan türünden en az 70 puan almış olmak.",
+        "İngilizce ICAO Seviye 4 belgesine sahip olmak.",
+        "Sağlık Kurulu Raporu (Hava Trafik Kontrolörü Olur) almak.",
+      ],
+      description: "DHMİ bünyesinde görev alacak yüksek maaş ve sosyal imkanlı Hava Trafik Kontrolörü seçme sınavı takvimi.",
+      officialUrl: "https://dhmi.gov.tr",
+      logoIcon: Icons.airplanemode_active,
+      isAlarmActive: false,
+    ),
+    ChannelAlarm(
+      id: "ziraat-uzman-01",
+      organization: "T.C. Ziraat Bankası",
+      title: "Ziraat Bankası 500 Müfettiş & Uzman Yardımcısı Alım Sınavı",
+      position: "500 Müfettiş & Uzman Yrd.",
+      city: "Tüm Türkiye",
+      date: "06.09.2026",
+      quota: "500",
+      deadline: "23.09.2026",
+      applicationPlace: "Ziraat Bankası İK",
+      employmentType: "Banka Personeli",
+      applicationType: "Online Başvuru",
+      status: "Açık",
+      contentType: "SINAV",
+      category: "KİT & Bankalar",
+      educationLevel: "Lisans",
+      kpssStatus: "Muaf",
+      examDate: "18.10.2026",
+      requirements: const [
+        "İktisat, İşletme, Hukuk veya Mühendislik fakültelerinden mezun olmak.",
+        "30 yaşını doldurmamış olmak.",
+        "Yazılı sınav ve mülakat aşamalarında başarılı olmak.",
+      ],
+      description: "Ziraat Bankası Genel Müdürlük ve Şubelerinde istihdam edilmek üzere bankacılık uzman yardımcısı alım sınavı.",
+      officialUrl: "https://ziraatbank.com.tr",
+      logoIcon: Icons.account_balance,
       isAlarmActive: false,
     ),
   ];
 
 
   int get _activeCount => _channels.where((c) => c.isAlarmActive).length;
+
+  int _selectedTabIndex = 0; // 0: İlanlar, 1: Sınav Takvimi, 2: Sonuç & Mülakat
+  String _selectedCategory = "Tümü";
+  String _selectedKpss = "Tümü";
+  String _selectedEducation = "Tümü";
+
+  static const List<String> kAllCategories = [
+    "Tümü",
+    "Askeri & Emniyet",
+    "Bakanlıklar",
+    "Belediyeler & Mahalli İdareler",
+    "Üniversiteler & Akademik",
+    "İŞKUR & Kamu İşçi",
+    "KİT & Bankalar",
+    "ÖSYM & Sınavlar",
+  ];
+
+  static const List<String> kAllKpssStatuses = [
+    "Tümü",
+    "KPSS'li",
+    "KPSS'siz",
+    "Muaf",
+  ];
+
+  static const List<String> kAllEducationLevels = [
+    "Tümü",
+    "Okuryazar",
+    "Lise",
+    "Ön Lisans",
+    "Lisans",
+  ];
+
+  int get _ilanCount => _channels.where((c) => c.contentType == "ILAN").length;
+  int get _sinavCount => _channels.where((c) => c.contentType == "SINAV").length;
+  int get _sonucMulakatCount => _channels.where((c) => c.contentType == "MULAKAT" || c.contentType == "SONUC").length;
+
+  List<ChannelAlarm> get _filteredChannels {
+    return _channels.where((c) {
+      if (_selectedTabIndex == 0 && c.contentType != "ILAN") return false;
+      if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
+      if (_selectedTabIndex == 2 && c.contentType != "MULAKAT" && c.contentType != "SONUC") return false;
+      if (_selectedCategory != "Tümü" && c.category != _selectedCategory) return false;
+      if (_selectedKpss != "Tümü" && c.kpssStatus != _selectedKpss) return false;
+      if (_selectedEducation != "Tümü" && c.educationLevel != _selectedEducation) return false;
+      return true;
+    }).toList();
+  }
+
+  Widget _buildMainTab(int index, String label, IconData icon, int count) {
+    final isSelected = _selectedTabIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTabIndex = index;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryBlue : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 15, color: isSelected ? Colors.white : Colors.white60),
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white70,
+                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "$count",
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.amber,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFilterModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0F172A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Filtreleme & Arama", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedCategory = "Tümü";
+                          _selectedKpss = "Tümü";
+                          _selectedEducation = "Tümü";
+                        });
+                        setModalState(() {});
+                      },
+                      child: const Text("Sıfırla", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text("Kategori", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: kAllCategories.map((cat) {
+                    final sel = _selectedCategory == cat;
+                    return ChoiceChip(
+                      label: Text(cat),
+                      selected: sel,
+                      onSelected: (v) {
+                        setState(() => _selectedCategory = cat);
+                        setModalState(() {});
+                      },
+                      selectedColor: AppTheme.primaryBlue,
+                      backgroundColor: const Color(0xFF1E293B),
+                      labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+                const Text("KPSS Durumu", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: kAllKpssStatuses.map((k) {
+                    final sel = _selectedKpss == k;
+                    return ChoiceChip(
+                      label: Text(k),
+                      selected: sel,
+                      onSelected: (v) {
+                        setState(() => _selectedKpss = k);
+                        setModalState(() {});
+                      },
+                      selectedColor: const Color(0xFFF59E0B),
+                      backgroundColor: const Color(0xFF1E293B),
+                      labelStyle: TextStyle(color: sel ? const Color(0xFF0F172A) : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+                const Text("Öğrenim Seviyesi", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: kAllEducationLevels.map((e) {
+                    final sel = _selectedEducation == e;
+                    return ChoiceChip(
+                      label: Text(e),
+                      selected: sel,
+                      onSelected: (v) {
+                        setState(() => _selectedEducation = e);
+                        setModalState(() {});
+                      },
+                      selectedColor: const Color(0xFF10B981),
+                      backgroundColor: const Color(0xFF1E293B),
+                      labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryBlue,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("Filtreleri Uygula (${_filteredChannels.length} İlan)", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   // 👑 VIP & PREMIUM İLAN KİLİDİ POP-UP'I (3 PAKETLİ)
   void _showPremiumUpgradePopUp() {
@@ -2237,29 +2825,210 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               ),
             ),
 
-            // Takip Kanalları
+            // 3 Ana Sekme (İlanlar, Sınav Takvimi, Sonuç & Mülakat)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF131E33),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF1E2D4A)),
+                ),
+                child: Row(
+                  children: [
+                    _buildMainTab(0, "İlanlar", Icons.campaign_rounded, _ilanCount),
+                    _buildMainTab(1, "Sınav Takvimi", Icons.event_note_rounded, _sinavCount),
+                    _buildMainTab(2, "Sonuç & Mülakat", Icons.fact_check_rounded, _sonucMulakatCount),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Kategori Çipleri (Yatay Kaydırılabilir) + Filtre Butonu
+            SizedBox(
+              height: 38,
+              child: Row(
+                children: [
+                  const SizedBox(width: 16),
+                  InkWell(
+                    onTap: _showFilterModal,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: (_selectedKpss != "Tümü" || _selectedEducation != "Tümü")
+                            ? Colors.amber.withValues(alpha: 0.25)
+                            : const Color(0xFF131E33),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: (_selectedKpss != "Tümü" || _selectedEducation != "Tümü")
+                              ? Colors.amber
+                              : const Color(0xFF1E2D4A),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.tune,
+                            size: 14,
+                            color: (_selectedKpss != "Tümü" || _selectedEducation != "Tümü")
+                                ? Colors.amber
+                                : Colors.white70,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "Filtre",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: (_selectedKpss != "Tümü" || _selectedEducation != "Tümü")
+                                  ? Colors.amber
+                                  : Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(right: 16),
+                      itemCount: kAllCategories.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 6),
+                      itemBuilder: (context, idx) {
+                        final cat = kAllCategories[idx];
+                        final isSel = _selectedCategory == cat;
+                        return ChoiceChip(
+                          label: Text(cat),
+                          selected: isSel,
+                          onSelected: (val) {
+                            setState(() {
+                              _selectedCategory = cat;
+                            });
+                          },
+                          selectedColor: AppTheme.primaryBlue,
+                          backgroundColor: const Color(0xFF131E33),
+                          labelStyle: TextStyle(
+                            color: isSel ? Colors.white : Colors.white70,
+                            fontSize: 11,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color: isSel ? AppTheme.primaryBlue : const Color(0xFF1E2D4A),
+                            ),
+                          ),
+                          showCheckmark: false,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Liste Başlığı ve Sayaç
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("Takip & Alarm Kanalları", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   Text(
-                    "$_activeCount Takvim Radarda Açık",
+                    _selectedTabIndex == 0
+                        ? "Aktif Alım İlanları (${_filteredChannels.length})"
+                        : _selectedTabIndex == 1
+                            ? "Sınav & Başvuru Takvimi (${_filteredChannels.length})"
+                            : "Sonuçlar & Mülakatlar (${_filteredChannels.length})",
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  Text(
+                    "$_activeCount Alarm Açık",
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
+            // Paywall Hatırlatma Şeridi (İlk 4 ilan ücretsiz)
+            if (!_effectiveVip && _filteredChannels.length > 4)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.workspace_premium, color: Colors.amber, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "👑 İlk 4 İlan Ücretsizdir",
+                              style: TextStyle(color: Colors.amber, fontWeight: FontWeight.w900, fontSize: 12),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              "Kalan ${_filteredChannels.length - 4} ilanın detayları için VIP'e geçin.",
+                              style: const TextStyle(color: Colors.white70, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                      InkWell(
+                        onTap: _showPremiumUpgradePopUp,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.amber,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            "VIP'e Geç",
+                            style: TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // İlan Listesi (Filtrelenmiş & İlk 4 açık, 5+ kilitli)
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _channels.length,
+              itemCount: _filteredChannels.length,
               itemBuilder: (context, index) {
-                final ch = _channels[index];
+                final ch = _filteredChannels[index];
                 final isLocked = index >= 4 && !_effectiveVip;
 
                 final cardBody = InkWell(
@@ -2281,6 +3050,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                         officialUrl: ch.officialUrl,
                         status: ch.status,
                         logoIcon: ch.logoIcon,
+                        category: ch.category,
+                        contentType: ch.contentType,
+                        educationLevel: ch.educationLevel,
+                        kpssStatus: ch.kpssStatus,
+                        examDate: ch.examDate,
                       ),
                       isVip: _effectiveVip,
                     );
@@ -2309,7 +3083,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                           ),
                           child: Icon(
                             ch.logoIcon,
-                            color: const Color(0xFFDC2626), // Kırmızı amblem tonu
+                            color: const Color(0xFFDC2626),
                             size: 26,
                           ),
                         ),
@@ -2319,17 +3093,39 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                ch.organization,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      ch.organization,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E293B),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      ch.educationLevel,
+                                      style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 9, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 ch.position,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 14,
@@ -2345,12 +3141,17 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                                     ch.city,
                                     style: const TextStyle(color: Colors.white54, fontSize: 11),
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: 8),
                                   const Icon(Icons.access_time, size: 11, color: Colors.white54),
                                   const SizedBox(width: 2),
                                   Text(
                                     ch.date,
                                     style: const TextStyle(color: Colors.white54, fontSize: 11),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    ch.kpssStatus,
+                                    style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 10, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -2358,7 +3159,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // Belirgin Bildirim Açma Butonu
+                        // Bildirim Açma Butonu
                         InkWell(
                           onTap: isLocked ? null : () => _toggleChannelAlarm(ch),
                           borderRadius: BorderRadius.circular(10),
@@ -2382,7 +3183,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  ch.isAlarmActive ? "Açık" : "Bildirim Aç",
+                                  ch.isAlarmActive ? "Açık" : "Bildirim",
                                   style: TextStyle(
                                     color: ch.isAlarmActive ? const Color(0xFF22C55E) : const Color(0xFFF59E0B),
                                     fontWeight: FontWeight.bold,
@@ -2396,7 +3197,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                         const SizedBox(width: 4),
                         // Durum rozeti (Açık, Yakında, Sonuç, Kapalı)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                           decoration: BoxDecoration(
                             color: ch.statusColor,
                             borderRadius: BorderRadius.circular(6),
@@ -2410,8 +3211,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.chevron_right, color: Colors.white54, size: 18),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.chevron_right, color: Colors.white54, size: 16),
                       ],
                     ),
                   ),
@@ -2419,64 +3220,109 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
                 if (!isLocked) {
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin: const EdgeInsets.only(bottom: 10),
                     child: cardBody,
                   );
                 }
 
-                // 5. İlandan İtibaren Buzlu (Blur) & Kilitli Kart
+                // 👑 VIP Kilitli Kart (Taşma yapmayan, şık ve kompakt yatay tasarım)
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
+                  margin: const EdgeInsets.only(bottom: 10),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Stack(
-                      alignment: Alignment.center,
                       children: [
+                        // Buzlu arka plan
                         ImageFiltered(
                           imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
                           child: cardBody,
                         ),
+                        // Şık, taşmayan VIP Kilit Kaplaması
                         Positioned.fill(
                           child: Material(
-                            color: const Color(0xFF091122).withValues(alpha: 0.82),
+                            color: const Color(0xFF091122).withValues(alpha: 0.85),
                             child: InkWell(
                               onTap: () {
                                 _showPremiumUpgradePopUp();
                               },
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                child: Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.all(8),
+                                      width: 40,
+                                      height: 40,
                                       decoration: BoxDecoration(
-                                        color: Colors.amber.withValues(alpha: 0.2),
+                                        color: Colors.amber.withValues(alpha: 0.15),
                                         shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
                                       ),
-                                      child: const Icon(Icons.lock, color: Colors.amber, size: 20),
+                                      child: const Icon(Icons.lock_rounded, color: Colors.amber, size: 20),
                                     ),
-                                    const SizedBox(height: 6),
-                                    const Text(
-                                      "👑 Bu İlan VIP Üyelere Özeldir",
-                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Row(
+                                            children: [
+                                              Text(
+                                                "🔒 VIP Kilitli İlan",
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              SizedBox(width: 5),
+                                              Text("👑", style: TextStyle(fontSize: 11)),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "${ch.organization} • ${ch.category}",
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.amber,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 2),
-                                    const Text(
-                                      "İlk 4 ilan ücretsizdir. 50+ güncel kamu alımının kilidini açmak için VIP'e geçin.",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 10, color: Colors.white70),
-                                    ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                                       decoration: BoxDecoration(
-                                        color: Colors.amber,
-                                        borderRadius: BorderRadius.circular(10),
+                                        gradient: const LinearGradient(
+                                          colors: [Colors.amber, Colors.orangeAccent],
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.amber.withValues(alpha: 0.35),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
                                       ),
-                                      child: const Text(
-                                        "Kilidi Aç (VIP)",
-                                        style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900, fontSize: 10),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.workspace_premium, color: Color(0xFF0F172A), size: 14),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            "Kilidi Aç",
+                                            style: TextStyle(
+                                              color: Color(0xFF0F172A),
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],

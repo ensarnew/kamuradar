@@ -19,6 +19,11 @@ class AnnouncementDetailData {
   final String status;
   final Color logoBgColor;
   final IconData logoIcon;
+  final String? category;
+  final String? contentType;
+  final String? educationLevel;
+  final String? kpssStatus;
+  final String? examDate;
 
   const AnnouncementDetailData({
     required this.id,
@@ -41,6 +46,11 @@ class AnnouncementDetailData {
     this.status = "Açık",
     this.logoBgColor = Colors.white,
     this.logoIcon = Icons.account_balance,
+    this.category,
+    this.contentType,
+    this.educationLevel,
+    this.kpssStatus,
+    this.examDate,
   });
 }
 
@@ -116,6 +126,25 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
       default:
         return const Color(0xFF64748B); // Gri
     }
+  }
+
+  Widget _buildBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 
   Future<void> _shareOnWhatsApp() async {
@@ -225,64 +254,89 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: const Color(0xFF1F2E4D)),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Beyaz dairesel logo kapsülü
-                          Container(
-                            width: 52,
-                            height: 52,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              item.logoIcon,
-                              color: const Color(0xFFDC2626), // Kırmızı resmî amblem tonu
-                              size: 28,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.organization,
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Beyaz dairesel logo kapsülü
+                              Container(
+                                width: 52,
+                                height: 52,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  item.position,
+                                child: Icon(
+                                  item.logoIcon,
+                                  color: const Color(0xFFDC2626), // Kırmızı resmî amblem tonu
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.organization,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      item.position,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Durum rozeti (Açık, Yakında, Sonuç, Kapalı)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _statusColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  item.status,
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 17,
                                     fontWeight: FontWeight.w900,
+                                    fontSize: 11,
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          // Durum rozeti (Açık, Yakında, Sonuç, Kapalı)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _statusColor,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              item.status,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 11,
+                          if (item.category != null || item.educationLevel != null || item.kpssStatus != null || item.examDate != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  if (item.category != null)
+                                    _buildBadge(item.category!, const Color(0xFF38BDF8)),
+                                  if (item.contentType != null)
+                                    _buildBadge(item.contentType!, const Color(0xFFA78BFA)),
+                                  if (item.educationLevel != null)
+                                    _buildBadge("🎓 ${item.educationLevel}", const Color(0xFF34D399)),
+                                  if (item.kpssStatus != null)
+                                    _buildBadge("📋 ${item.kpssStatus}", const Color(0xFFFBBF24)),
+                                  if (item.examDate != null)
+                                    _buildBadge("🗓️ Sınav: ${item.examDate}", const Color(0xFFF472B6)),
+                                ],
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),

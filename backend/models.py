@@ -3,7 +3,21 @@ from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+class ContentType(str, Enum):
+    ILAN = "ILAN"
+    SINAV = "SINAV"
+    MULAKAT = "MULAKAT"
+    SONUC = "SONUC"
+
 class AnnouncementCategory(str, Enum):
+    ASKERI_EMNIYET = "Askeri & Emniyet"
+    BAKANLIKLAR = "Bakanlıklar"
+    BELEDIYELER = "Belediyeler & Mahalli İdareler"
+    AKADEMIK = "Üniversiteler & Akademik"
+    ISKUR_ISCI = "İŞKUR & Kamu İşçi"
+    KIT_BANKALAR = "KİT & Bankalar"
+    OSYM_SINAVLAR = "ÖSYM & Sınavlar"
+    # Geriye dönük uyumluluk
     JANDARMA = "jandarma"
     MSU_ASKERI = "msu_askeri"
     POLIS_POMEM = "polis_pomem"
@@ -21,6 +35,10 @@ class ExamScheduleItem(BaseModel):
     id: str
     title: str
     organization: str  # ÖSYM, MSB, JSGA, EGM vb.
+    category: Optional[str] = "ÖSYM & Sınavlar"
+    content_type: ContentType = ContentType.SINAV
+    education_level: Optional[str] = "Lisans"
+    kpss_status: Optional[str] = "KPSS'li"
     application_dates: str
     start_date: Optional[str] = None
     end_date: Optional[str] = None
@@ -33,11 +51,15 @@ class Announcement(BaseModel):
     id: str
     title: str
     organization: str
-    category: AnnouncementCategory
+    category: str
+    content_type: ContentType = ContentType.ILAN
+    education_level: Optional[str] = "Lisans"  # Okuryazar, Lise, Ön Lisans, Lisans
+    kpss_status: Optional[str] = "KPSS'li"      # KPSS'li, KPSS'siz, Muaf
+    exam_date: Optional[str] = None
+    application_deadline: Optional[str] = None
     summary: str
     requirements: List[str] = []
     application_start: Optional[str] = None
-    application_deadline: Optional[str] = None
     official_url: str
     published_at: str
     scanned_at_12pm: str
