@@ -98,14 +98,10 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
       }
     }
 
-    // Ücretsiz kullanıcıya geçiş reklamı gösterip resmî linke yönlendir
-    if (!widget.isVip) {
-      AdService.instance.showInterstitialAd(
-        onComplete: openUrl,
-      );
-    } else {
-      openUrl();
-    }
+    // Resmî linke yönlendirmeden önce geçiş reklamı göster
+    AdService.instance.showInterstitialAd(
+      onComplete: openUrl,
+    );
   }
 
   Color get _statusColor {

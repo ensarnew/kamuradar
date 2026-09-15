@@ -57,12 +57,11 @@ class AuthService {
   // Çıkış Yap
   static Future<void> signOut() async {
     try {
-      await FirebaseSyncService.markGoogleLoggedIn(false);
-      await FirebaseSyncService.setGuestMode(false);
+      await FirebaseSyncService.clearLocalUserData();
       await _googleSignIn.signOut();
       await _auth.signOut();
       if (kDebugMode) {
-        print("🚪 Kullanıcı çıkış yaptı.");
+        print("🚪 Kullanıcı çıkış yaptı ve tüm yerel VIP/oturum verileri temizlendi.");
       }
     } catch (e) {
       if (kDebugMode) {

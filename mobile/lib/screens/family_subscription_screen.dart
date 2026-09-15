@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/firebase_sync_service.dart';
 import '../theme/app_theme.dart';
 
@@ -40,10 +41,12 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
   Future<void> _checkPlanRole() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final plan = prefs.getString("cache_vip_plan") ?? (widget.isVip ? "yearly_vip" : "free");
+      final isVip = prefs.getBool("cache_is_vip") ?? widget.isVip;
+      final isOwner = prefs.getBool("is_family_group_owner") ?? false;
       final joinedCode = prefs.getString("joined_family_code");
 
-      if (plan == "family_invited_vip") {
+      if (isVip && !isOwner) {
+        // Davetli VIP üye: Asla yönetici kodu üretmez, sadece arkadaşının koduyla VIP'dir
         if (mounted) {
           setState(() {
             _isGroupOwner = false;
@@ -51,7 +54,8 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             _joinedViaCode = joinedCode;
           });
         }
-      } else if (plan == "yearly_vip" || plan == "monthly_vip" || plan == "vip_family_plan" || widget.isVip) {
+      } else if (isVip && isOwner) {
+        // Satın alan grup yöneticisi
         if (mounted) {
           setState(() {
             _isGroupOwner = true;
@@ -151,6 +155,8 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
       code = _generateUniqueCode();
       await prefs.setString("user_family_invite_code", code);
     }
+    await prefs.setBool("is_family_group_owner", true);
+    await prefs.remove("joined_family_code");
 
     setState(() {
       _isPlanPurchased = true;
@@ -210,8 +216,15 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               final oldCode = _generatedInviteCode;
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool("is_family_group_owner", false);
+              await prefs.remove("joined_family_code");
+              await prefs.remove("user_family_invite_code");
+              await prefs.remove("family_members_list");
+
               setState(() {
                 _isPlanPurchased = false;
+                _isGroupOwner = false;
                 _generatedInviteCode = null;
                 _members.clear();
               });
@@ -237,7 +250,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     );
   }
 
-  // 3. Karşı Tarafın Kod Girme Alanı
+  // 3. Karşı Tarafın Kod Girme Alanı (KESİN DOĞRULAMA - GEÇERSİZ KODLAR ASLA VIP YAPMAZ)
   Future<void> _submitFriendInviteCode(String code) async {
     final cleanCode = code.trim().toUpperCase();
     if (cleanCode.isEmpty) return;
@@ -274,23 +287,19 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
           }
         }
       } else {
-        if (RegExp(r'^KR-[A-Z0-9]{4}$').hasMatch(cleanCode) || cleanCode.length >= 6) {
-          isValid = true;
-        } else {
-          errorMessage = "Geçersiz davet kodu! Kod KR-XXXX biçiminde olmalıdır.";
-        }
+        // KOD FİREBASE'DE YOKSA KESİNLİKLE GEÇERSİZDİR!
+        errorMessage = "Geçersiz davet kodu! Bu kod sistemde kayıtlı değildir.";
       }
     } catch (e) {
-      if (RegExp(r'^KR-[A-Z0-9]{4}$').hasMatch(cleanCode) || cleanCode.length >= 6) {
-        isValid = true;
-      } else {
-        errorMessage = "Bağlantı hatası: Davet kodu doğrulanamadı.";
-      }
+      errorMessage = "Bağlantı hatası: Davet kodu doğrulanamadı. Lütfen internet bağlantınızı kontrol edin.";
     }
 
     if (isValid) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString("joined_family_code", cleanCode);
+      await prefs.setBool("is_family_group_owner", false);
+      await prefs.remove("user_family_invite_code");
+
       setState(() {
         _isPlanPurchased = true;
         _isGroupOwner = false;
@@ -313,6 +322,26 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             backgroundColor: const Color(0xFFEF4444),
             content: Text(errorMessage ?? "Geçersiz davet kodu! Lütfen kodu kontrol edin."),
           ),
+        );
+      }
+    }
+  }
+
+  void _shareOnWhatsApp() async {
+    if (_generatedInviteCode == null) return;
+    final message = "KamuRadar Aile VIP Davet Kodum: $_generatedInviteCode\n\nKamuRadar uygulamasını indir, Aile Planı ekranında bu davet kodunu girerek 54 ilana ve canlı nöbetçiye ücretsiz eriş!\nİndir: https://kamuradar.onrender.com";
+    final url = Uri.parse("whatsapp://send?text=${Uri.encodeComponent(message)}");
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+      } else {
+        final webUrl = Uri.parse("https://api.whatsapp.com/send?text=${Uri.encodeComponent(message)}");
+        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("WhatsApp başlatılamadı: $e")),
         );
       }
     }
@@ -356,18 +385,18 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             const SizedBox(height: 8),
 
             _buildFeatureCard(
-              icon: Icons.block,
-              iconColor: AppTheme.amberGold,
-              title: "Sıfır Reklam Deneyimi",
-              description: "İlan ararken, kılavuz incelerken veya başvuru yaparken sıfır reklam; maksimum hız ve kesintisiz akıcılık.",
+              icon: Icons.language,
+              iconColor: const Color(0xFF38BDF8),
+              title: "Özel Web Sitesi Nöbetçisi",
+              description: "Kendi dilediğiniz resmî kamu veya sınav sayfalarını ekleyin; sistem belirlediğiniz kelimelerle sayfayı takip etsin.",
             ),
             const SizedBox(height: 8),
 
             _buildFeatureCard(
-              icon: Icons.auto_awesome,
-              iconColor: const Color(0xFFA855F7),
-              title: "Özel Link Takibi (RadarAI)",
-              description: "Kendi dilediğiniz resmî sayfaları nöbetçiye ekleyin; yapay zeka sizin belirlediğiniz kriterlerle 7/24 tarasın.",
+              icon: Icons.schedule,
+              iconColor: AppTheme.amberGold,
+              title: "Gündüz 2 Saatte Bir Canlı Denetim",
+              description: "Gündüz 10:00 - 22:00 arasında otomatik denetim yapılır; yeni ilan tespit edildiğinde anında bildirim gönderilir.",
             ),
 
             const SizedBox(height: 20),
@@ -422,7 +451,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                             ),
                             const SizedBox(height: 4),
                             const Text(
-                              "Tüm yıl boyunca 54 ilanın tamamı açık, sıfır reklam, 4 kişilik aile planı ve özel link takibi.",
+                              "Tüm yıl boyunca 54 ilanın tamamı açık, 4 kişilik aile planı ve özel web sitesi takibi.",
                               style: TextStyle(fontSize: 11, color: Color(0xFFCBD5E1)),
                             ),
                           ],
@@ -478,7 +507,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                             ),
                             SizedBox(height: 4),
                             Text(
-                              "Aylık yenilenir. 54 ilanın tamamı açık, sınırsız bildirim, sıfır reklam, 4 kişilik aile planı.",
+                              "Aylık yenilenir. 54 ilanın tamamı açık, sınırsız bildirim, 4 kişilik aile planı ve özel site takibi.",
                               style: TextStyle(fontSize: 11, color: Color(0xFFCBD5E1)),
                             ),
                           ],
@@ -513,8 +542,8 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                   icon: const Icon(Icons.workspace_premium, color: AppTheme.amberGold),
                   label: Text(
                     _selectedPlanIndex == 1
-                        ? "299.99 ₺ ile Yıllık VIP Başlat (Sıfır Reklam)"
-                        : "39.99 ₺ ile Aylık VIP Başlat (Sıfır Reklam)",
+                        ? "299.99 ₺ ile Yıllık VIP Başlat"
+                        : "39.99 ₺ ile Aylık VIP Başlat",
                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                   ),
                   onPressed: _buySubscription,
@@ -552,7 +581,10 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                       const SizedBox(height: 8),
                       const Text("3 Arkadaşınızla Paylaşacağınız Özel Davet Kodu:", style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11)),
                       const SizedBox(height: 8),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -562,9 +594,11 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                               style: const TextStyle(color: AppTheme.amberGold, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
                             ),
                           ),
-                          const SizedBox(width: 10),
                           ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2563EB),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
                             icon: const Icon(Icons.copy, size: 14, color: Colors.white),
                             label: const Text("Kopyala", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                             onPressed: () {
@@ -574,7 +608,16 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                                 );
                               }
                             },
-                          )
+                          ),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF22C55E),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                            icon: const Icon(Icons.share, size: 14, color: Colors.white),
+                            label: const Text("WhatsApp'ta Paylaş", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                            onPressed: _shareOnWhatsApp,
+                          ),
                         ],
                       ),
                     ],
@@ -584,7 +627,12 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                 const SizedBox(height: 16),
                 const Text("Grup Kontenjanı (Siz + 3 Kişi)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 8),
-                _buildSlot("1. Ensar (Siz - Yönetici)", "Aktif", const Color(0xFF38BDF8), true),
+                _buildSlot(
+                  "1. ${(FirebaseAuth.instance.currentUser?.displayName != null && FirebaseAuth.instance.currentUser!.displayName!.isNotEmpty) ? FirebaseAuth.instance.currentUser!.displayName! : (FirebaseAuth.instance.currentUser?.email != null ? FirebaseAuth.instance.currentUser!.email!.split('@')[0] : 'Yönetici')} (Siz - Yönetici)",
+                  "Aktif",
+                  const Color(0xFF38BDF8),
+                  true,
+                ),
                 for (int i = 0; i < _maxExtraMembers; i++)
                   if (i < _members.length)
                     _buildSlot("${i + 2}. ${_members[i]}", "Aile Üyesi • Aktif", const Color(0xFF10B981), true)
@@ -612,8 +660,8 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                       const SizedBox(height: 10),
                       Text(
                         _joinedViaCode != null
-                            ? "Arkadaşınızın '$_joinedViaCode' davet koduyla Premium aile grubuna katıldınız. 54 İlanın tamamı, sıfır reklam ve özel link takibi sınırsız kullanımınızdadır."
-                            : "Premium Aile Planı üyesi olarak tüm VIP avantajlarından (54 İlan Açık, Sıfır Reklam) sınırsız yararlanıyorsunuz.",
+                            ? "Arkadaşınızın '$_joinedViaCode' davet koduyla Premium aile grubuna katıldınız. 54 İlanın tamamı ve özel web sitesi nöbetçisi sınırsız kullanımınızdadır."
+                            : "Premium Aile Planı üyesi olarak tüm VIP avantajlarından (54 İlan Açık, Özel Nöbetçi) sınırsız yararlanıyorsunuz.",
                         style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, height: 1.4),
                       ),
                       const SizedBox(height: 12),
@@ -677,7 +725,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                             textCapitalization: TextCapitalization.characters,
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                             decoration: InputDecoration(
-                              hintText: "Örn: KR-8X92",
+                              hintText: "Davet Kodunu Girin (Örn: KR-XXXX)",
                               hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
                               filled: true,
                               fillColor: const Color(0xFF091122),

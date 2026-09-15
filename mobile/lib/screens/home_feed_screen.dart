@@ -1617,7 +1617,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              "İlk 4 ilan ücretsizdir. Bu ilan ve diğer 50 güncel kamu alımını görmek, alarmlarını açmak ve sıfır reklam deneyimi için paket seçin.",
+              "İlk 4 ilan ücretsizdir. Bu ilan ve diğer 50 güncel kamu alımını görmek, anlık alarmlar ve özel web sitesi nöbetçisi için paket seçin.",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600, height: 1.4),
             ),
@@ -1630,7 +1630,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 setState(() => _isUserVip = true);
                 widget.onUpgradeVip?.call();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("👑 Yıllık VIP Aile Planı Aktif! Tüm 54 ilanın kilidi açıldı ve reklamlar kaldırıldı.")),
+                  const SnackBar(content: Text("👑 Yıllık VIP Aile Planı Aktif! Tüm 54 ilanın kilidi açıldı.")),
                 );
               },
               child: Container(
@@ -1658,7 +1658,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     const SizedBox(height: 6),
                     const Text("Yıllık VIP (4 Kişilik Aile Planı)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 2),
-                    const Text("1 Yıl boyunca tüm ilanlar açık, sıfır reklam, 3 arkadaş slotu ve sınırsız alarmlar.", style: TextStyle(color: Colors.white70, fontSize: 10)),
+                    const Text("1 Yıl boyunca tüm ilanlar açık, özel web sitesi nöbetçisi ve 3 arkadaş slotu.", style: TextStyle(color: Colors.white70, fontSize: 10)),
                   ],
                 ),
               ),
@@ -1690,7 +1690,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       children: [
                         Text("Aylık VIP Aile Paketi (4 Kişi)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A))),
                         SizedBox(height: 2),
-                        Text("Tüm kilitler açık, sıfır reklam, 3 arkadaş dahil.", style: TextStyle(fontSize: 10, color: Colors.black54)),
+                        Text("Tüm kilitler açık, özel web nöbetçisi, 3 arkadaş dahil.", style: TextStyle(fontSize: 10, color: Colors.black54)),
                       ],
                     ),
                     Text("39.99 ₺ / ay", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Color(0xFF0F172A))),

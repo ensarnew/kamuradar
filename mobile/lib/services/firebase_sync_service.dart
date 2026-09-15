@@ -116,6 +116,15 @@ class FirebaseSyncService {
           'vip_plan': 'free',
           'active_alarms': ["ch-01", "ch-02"],
         }, SetOptions(merge: true));
+
+        // Yeni kullanıcının cihazda eski hesaptan kalan VIP haklarını kesinlikle sıfırla
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_keyIsVip, false);
+        await prefs.setString(_keyVipPlan, 'free');
+        await prefs.setBool("is_family_group_owner", false);
+        await prefs.remove("joined_family_code");
+        await prefs.remove("user_family_invite_code");
+        await prefs.remove("family_members_list");
         return null;
       }
 
@@ -123,13 +132,13 @@ class FirebaseSyncService {
       final prefs = await SharedPreferences.getInstance();
 
       // VIP Durumu Geri Yükle
-      if (data.containsKey('is_vip')) {
-        final bool isVipCloud = data['is_vip'] == true;
-        await prefs.setBool(_keyIsVip, isVipCloud);
-      }
-      if (data.containsKey('vip_plan')) {
-        await prefs.setString(_keyVipPlan, data['vip_plan'].toString());
-      }
+      final bool isVipCloud = data['is_vip'] == true;
+      final String planCloud = (data['vip_plan'] ?? 'free').toString();
+      final bool isOwner = isVipCloud && (planCloud == 'yearly_vip' || planCloud == 'monthly_vip' || planCloud == 'vip_family_plan');
+
+      await prefs.setBool(_keyIsVip, isVipCloud);
+      await prefs.setString(_keyVipPlan, planCloud);
+      await prefs.setBool("is_family_group_owner", isOwner);
 
       // Alarmları Geri Yükle
       if (data.containsKey('active_alarms')) {
@@ -139,13 +148,28 @@ class FirebaseSyncService {
       }
 
       if (kDebugMode) {
-        print("✅ Firebase: Kullanıcı profili buluttan geri yüklendi (${user.email})");
+        print("✅ Firebase: Kullanıcı profili buluttan geri yüklendi (${user.email}) - VIP: $isVipCloud, Yönetici: $isOwner");
       }
       return data;
     } catch (e) {
       if (kDebugMode) print("Buluttan geri yükleme hatası: $e");
       return null;
     }
+  }
+
+  // Kullanıcı çıkış yaptığında tüm yerel VIP ve hesap artıklarını temizle
+  static Future<void> clearLocalUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyIsVip, false);
+      await prefs.setString(_keyVipPlan, "free");
+      await prefs.setBool("is_family_group_owner", false);
+      await prefs.remove("joined_family_code");
+      await prefs.remove("user_family_invite_code");
+      await prefs.remove("family_members_list");
+      await prefs.setBool(_keyIsGoogleLoggedIn, false);
+      await prefs.setBool(_keyIsGuest, false);
+    } catch (_) {}
   }
 
   // 6. Google ile Giriş Yapılmış mı / Oturum Kalıcı mı Kontrolü

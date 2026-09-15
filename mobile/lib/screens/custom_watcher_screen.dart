@@ -27,8 +27,6 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
   final TextEditingController _labelController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _keywordsController = TextEditingController();
-  final TextEditingController _aiPromptController = TextEditingController();
-  bool _isAiProcessing = false;
 
   static const Set<String> _ignoredGenericTerms = {
     "alım", "alımı", "alimlari", "alımları",
@@ -343,292 +341,6 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
     _scanWatcher(newWatcher);
   }
 
-  Map<String, dynamic> _parseAlarmIntent(String text) {
-    final lower = text.toLowerCase().trim();
-    if (lower.isEmpty) {
-      return {
-        "title": "Özel Sayfa Takip Nöbetçisi",
-        "url": "https://kariyerkapisi.cbiko.gov.tr",
-        "criteria": "Resmî Duyuru ve Başvuru Şartları",
-        "keywords": ["Duyuru", "Başvuru", "Alım"],
-      };
-    }
-
-    if (lower.contains("tarım") || lower.contains("tarim") || lower.contains("orman") || lower.contains("ogm")) {
-      return {
-        "title": "Tarım ve Orman Bakanlığı & OGM Alımları",
-        "url": "https://www.tarimorman.gov.tr",
-        "criteria": "Orman Muhafaza Memuru, Mühendis, Veteriner, Yangın İşçisi, Sözleşmeli Personel Alımı",
-        "keywords": ["Orman Muhafaza", "Tarım ve Orman", "OGM"],
-      };
-    } else if (lower.contains("itfaiye") || lower.contains("itfaye") || lower.contains("zabıta") || lower.contains("zabita") || lower.contains("belediye")) {
-      return {
-        "title": "Belediye İtfaiye & Zabıta Memuru Alımları",
-        "url": "https://www.turkiye.gov.tr",
-        "criteria": "İtfaiye Eri, Zabıta Memuru Alımı, Parkur Sınavı ve KPSS Taban Puanı",
-        "keywords": ["İtfaiye Eri", "Zabıta Memuru"],
-      };
-    } else if (lower.contains("green card") || lower.contains("greencard") || lower.contains("dv-") || lower.contains("amerika")) {
-      return {
-        "title": "ABD Resmî Green Card (DV Lottery) Başvurusu",
-        "url": "https://dvprogram.state.gov",
-        "criteria": "DV Çekiliş Başvuru Tarihleri, Form Girişi, Sonuç Açıklama Duyurusu",
-        "keywords": ["Green Card", "DV Lottery"],
-      };
-    } else if (lower.contains("polis") || lower.contains("pomem") || lower.contains("pmyo") || lower.contains("bekçi") || lower.contains("bekci")) {
-      return {
-        "title": "Emniyet & Polis Akademisi (POMEM/PMYO) Alımları",
-        "url": "https://www.pa.edu.tr",
-        "criteria": "POMEM Polis Memuru, Bekçilik Alım Kılavuzu, Parkur ve Mülakat Tarihleri",
-        "keywords": ["POMEM", "PMYO", "Polis Akademisi", "Bekçi"],
-      };
-    } else if (lower.contains("sağlık") || lower.contains("saglik") || lower.contains("hemşire") || lower.contains("hemsire") || lower.contains("ebe")) {
-      return {
-        "title": "Sağlık Bakanlığı Personel Alımı & ÖSYM Tercih",
-        "url": "https://yhgm.saglik.gov.tr",
-        "criteria": "Sözleşmeli Sağlık Personeli (Hemşire, Ebe, Tekniker), İŞKUR Sürekli İşçi Alımı",
-        "keywords": ["Sağlık Bakanlığı", "Hemşire", "Ebe"],
-      };
-    } else if (lower.contains("adalet") || lower.contains("katip") || lower.contains("ikm") || lower.contains("gardiyan") || lower.contains("cte")) {
-      return {
-        "title": "Adalet Bakanlığı & CTE Personel Alımı",
-        "url": "https://pgm.adalet.gov.tr",
-        "criteria": "İnfaz Koruma Memuru (İKM), Zabıt Katibi Klavye Sınavı, Mübaşir Alımı",
-        "keywords": ["İnfaz Koruma", "Zabıt Katibi", "Mübaşir"],
-      };
-    } else if (lower.contains("öğretmen") || lower.contains("ogretmen") || lower.contains("meb")) {
-      return {
-        "title": "MEB Sözleşmeli Öğretmenlik Atamaları",
-        "url": "https://ilkatama.meb.gov.tr",
-        "criteria": "Öğretmenlik Branş Kontenjanları, Sözlü Sınav ve Tercih Başvuruları",
-        "keywords": ["Sözleşmeli Öğretmen", "Öğretmen Atama"],
-      };
-    } else if (lower.contains("jandarma") || lower.contains("uzman")) {
-      return {
-        "title": "Jandarma Uzman Erbaş Alımı Nöbetçisi",
-        "url": "https://vatandas.jandarma.gov.tr/PTM/Giris",
-        "criteria": "Uzman Erbaş, Başvuru Kılavuzu, Sınav Sonuçları",
-        "keywords": ["Uzman Erbaş", "Jandarma"],
-      };
-    } else {
-      // Kullanıcının yazdığı her özel metinden dinamik başlık ve kural üret
-      final cleanTitle = text.replaceAll(RegExp(r'(için|icin|bana|alarm|kur|musun|mısın|takip|et|lütfen)', caseSensitive: false), '').trim();
-      final title = cleanTitle.isNotEmpty ? cleanTitle.toUpperCase() : "ÖZEL ALIM RADARI";
-      return {
-        "title": "$title Nöbetçisi",
-        "url": "https://kariyerkapisi.cbiko.gov.tr",
-        "criteria": "'$text' ile ilgili resmî ilan metni, başvuru kılavuzu ve kadro şartları",
-        "keywords": text.split(' ').where((w) => w.length > 2).toList(),
-      };
-    }
-  }
-
-  void _openAiSmartAlarmDialog() {
-    _aiPromptController.text = "";
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          final plan = _parseAlarmIntent(_aiPromptController.text);
-
-          return Container(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              top: 20,
-              left: 20,
-              right: 20,
-            ),
-            decoration: const BoxDecoration(
-              color: Color(0xFF0F172A),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              border: Border(top: BorderSide(color: Color(0xFF38BDF8), width: 1.5)),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(2)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2563EB).withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.4)),
-                        ),
-                        child: const Icon(Icons.auto_awesome, color: Color(0xFF38BDF8), size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              "RadarAI Akıllı Alarm Kurucu",
-                              style: TextStyle(color: Color(0xFFF8FAFC), fontWeight: FontWeight.w900, fontSize: 15),
-                            ),
-                            Text(
-                              "Ne isterseniz yazın, sistem anında algılar ve alarmı kurar",
-                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Takip Etmek İstediğiniz Alımı Yazın:",
-                    style: TextStyle(color: Color(0xFFF8FAFC), fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _aiPromptController,
-                    maxLines: 2,
-                    onChanged: (val) {
-                      setModalState(() {});
-                    },
-                    style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 13, fontWeight: FontWeight.w600),
-                    decoration: InputDecoration(
-                      hintText: "Örn: Tarım ve Orman Bakanlığı alımı / İtfaiye alımı / Green Card başvurusu",
-                      hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
-                      filled: true,
-                      fillColor: const Color(0xFF1E293B),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF334155)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF334155)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Dinamik AI Analiz Önizlemesi Kartı
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF131E33),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF1E2D4A)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.psychology, size: 16, color: Color(0xFFF59E0B)),
-                            const SizedBox(width: 6),
-                            Text(
-                              "Tespit Edilen: ${plan['title']}",
-                              style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("🌐 Hedef Link: ", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.bold)),
-                            Expanded(
-                              child: Text(
-                                plan['url'],
-                                style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("🔍 Kriterler: ", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.bold)),
-                            Expanded(
-                              child: Text(
-                                plan['criteria'],
-                                style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 11),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: const [
-                            Text("⏰ Denetim: ", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.bold)),
-                            Text("Gündüz 2 Saatte Bir (10:00 - 22:00)", style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 4,
-                      ),
-                      onPressed: _isAiProcessing
-                          ? null
-                          : () {
-                              final text = _aiPromptController.text.trim();
-                              if (text.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text("Lütfen alarm kurulmasını istediğiniz alanı veya kurumu yazın.")),
-                                );
-                                return;
-                              }
-
-                              setModalState(() => _isAiProcessing = true);
-                              Future.delayed(const Duration(milliseconds: 500), () {
-                                if (!mounted) return;
-                                Navigator.pop(ctx);
-                                _addWatcher(
-                                  plan['title'],
-                                  plan['url'],
-                                  aiCriteria: plan['criteria'],
-                                  targetKeywords: List<String>.from(plan['keywords']),
-                                );
-                              });
-                            },
-                      icon: const Icon(Icons.alarm_add, size: 18),
-                      label: Text(
-                        _isAiProcessing ? "Alarm Oluşturuluyor..." : "✨ Bu Alarmı Kaydet & Nöbete Başla",
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Future<void> _openLink(String url) async {
     final uri = Uri.parse(url);
     try {
@@ -651,7 +363,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
         backgroundColor: const Color(0xFF0F172A),
         elevation: 0,
         title: const Text(
-          "Özel Link & AI Alarm Takibi",
+          "Özel Link Takibi (Web Nöbetçisi)",
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFFF8FAFC)),
         ),
         actions: [
@@ -706,13 +418,13 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
             ),
             const SizedBox(height: 18),
             const Text(
-              "Özel Web Sitesi Takibi & RadarAI Alarmı",
+              "Özel Web Sitesi Nöbetçisi",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFFF8FAFC)),
             ),
             const SizedBox(height: 10),
             const Text(
-              "İstediğiniz kamu kurumu, jandarma, polis veya üniversite duyuru sayfasını ekleyin veya RadarAI'ya 'Bana uzman erbaş için alarm kur' deyin. Sistemimiz sayfayı gündüz saatlerinde (10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00) 2 saatte bir denetler, gece sessiz kalır.",
+              "İstediğiniz kamu kurumu, jandarma, polis veya üniversite duyuru sayfasını ekleyin ve aranacak terimleri belirleyin. Sistemimiz sayfayı gündüz saatlerinde (10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00) 2 saatte bir denetler, yeni ilan düştüğünde bildirim gönderir.",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8), height: 1.5),
             ),
@@ -743,85 +455,6 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🚀 RADARAI AKILLI ALARM BANNERI (YENİLENMİŞ VURUCU ÖZELLİK)
-          Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.5)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                )
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF38BDF8).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.auto_awesome, color: Color(0xFF38BDF8), size: 22),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            "RadarAI ile Akıllı Alarm Kur",
-                            style: TextStyle(color: Color(0xFFF8FAFC), fontWeight: FontWeight.w900, fontSize: 14),
-                          ),
-                          Text(
-                            "Örn: 'Jandarma uzman erbaş için bana alarm kur'",
-                            style: TextStyle(color: Color(0xFF93C5FD), fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  "RadarAI ilgili resmî kurumu, başvuru linkini ve kontrol edilecek kriterleri ('Uzman Erbaş', 'Kılavuz' vb.) otomatik çıkarır ve nöbetçi sunucu botuna kaydeder.",
-                  style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, height: 1.4),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 40,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF59E0B),
-                      foregroundColor: const Color(0xFF0F172A),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 2,
-                    ),
-                    onPressed: _openAiSmartAlarmDialog,
-                    icon: const Icon(Icons.smart_toy, size: 16),
-                    label: const Text(
-                      "✨ RadarAI Akıllı Alarm Asistanını Aç",
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           // Manuel Ekleme Kartı (Karanlık Lacivert & Açık Metin Kontrastı)
           Container(
             padding: const EdgeInsets.all(16),
@@ -1124,7 +757,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                     ],
                   ),
                 ),
-                if (w.aiCriteria != null) ...[
+                if (w.targetKeywords.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1135,11 +768,11 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.auto_awesome, size: 12, color: Color(0xFFF59E0B)),
+                        const Icon(Icons.search, size: 12, color: Color(0xFF38BDF8)),
                         const SizedBox(width: 5),
                         Expanded(
                           child: Text(
-                            "AI Kriteri: ${w.aiCriteria}",
+                            "Aranan Terimler: ${w.targetKeywords.join(', ')}",
                             style: const TextStyle(fontSize: 10, color: Color(0xFFE2E8F0), fontWeight: FontWeight.bold),
                             overflow: TextOverflow.ellipsis,
                           ),

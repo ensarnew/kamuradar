@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/firebase_sync_service.dart';
-import '../theme/app_theme.dart';
 import '../main.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -148,10 +147,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Divider(color: Color(0xFF1E2D4A), height: 1),
                       ),
                       _buildFeatureRow(
-                        Icons.auto_awesome,
-                        AppTheme.amberGold,
-                        "RadarAI Özel Link Nöbetçisi",
-                        "Dilediğiniz resmî siteyi ekleyin, AI kriterlerinize göre 7/24 tarasın.",
+                        Icons.language,
+                        const Color(0xFF38BDF8),
+                        "Özel Web Sitesi Nöbetçisi",
+                        "Dilediğiniz web adresini ekleyin, gündüz saatlerinde aradığınız kelimelerle canlı tarasın.",
                       ),
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 10),

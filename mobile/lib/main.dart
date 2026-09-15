@@ -5,7 +5,6 @@ import 'screens/custom_watcher_screen.dart';
 import 'screens/family_subscription_screen.dart';
 import 'screens/profile_settings_screen.dart';
 import 'screens/login_screen.dart';
-import 'widgets/radar_ai_sheet.dart';
 import 'services/notification_service.dart';
 import 'services/ad_service.dart';
 import 'services/firebase_sync_service.dart';
@@ -158,10 +157,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     return Scaffold(
       body: screens[_currentIndex],
-      floatingActionButton: RadarAIFloatingButton(
-        isVip: _isVip,
-        onUpgradeRequested: _upgradeToVip,
-      ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: Color(0xFF1E2D4A), width: 1)),
