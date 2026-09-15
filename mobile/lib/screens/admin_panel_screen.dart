@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/notification_service.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({Key? key}) : super(key: key);
@@ -53,6 +54,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     _notifUrlController.clear();
 
     final hasUrl = promoUrl.isNotEmpty;
+    NotificationService.showLocalNotification(
+      title: title,
+      body: body,
+    );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: AppTheme.primaryBlue,

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'firebase_sync_service.dart';
 
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -35,6 +36,11 @@ class AuthService {
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
 
+      if (user != null) {
+        await FirebaseSyncService.markGoogleLoggedIn(true);
+        await FirebaseSyncService.restoreUserDataFromCloud();
+      }
+
       if (kDebugMode) {
         print("✅ Google Girişi Başarılı: ${user?.displayName} (${user?.email})");
       }
@@ -51,6 +57,8 @@ class AuthService {
   // Çıkış Yap
   static Future<void> signOut() async {
     try {
+      await FirebaseSyncService.markGoogleLoggedIn(false);
+      await FirebaseSyncService.setGuestMode(false);
       await _googleSignIn.signOut();
       await _auth.signOut();
       if (kDebugMode) {

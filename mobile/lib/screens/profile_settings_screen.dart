@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/cache_service.dart';
 import '../services/ad_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import 'admin_panel_screen.dart';
 
@@ -606,6 +607,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           ),
           const Divider(height: 1, color: Color(0xFF1E2D4A)),
 
+          const Divider(height: 1, color: Color(0xFF1E2D4A)),
+
           // Titreşim
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -614,6 +617,39 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             value: _notificationVibrate,
             activeThumbColor: AppTheme.primaryBlue,
             onChanged: (v) => setState(() => _notificationVibrate = v),
+          ),
+          const SizedBox(height: 14),
+
+          // TEST BİLDİRİMİ GÖNDER TUŞU
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E3A8A),
+                foregroundColor: const Color(0xFF38BDF8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.notifications_active, size: 18),
+              label: const Text(
+                "🔔 Test Bildirimi Gönder (Zil Testi)",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+              onPressed: () async {
+                await NotificationService.showLocalNotification(
+                  title: "KamuRadar Test Bildirimi 🔔",
+                  body: "Tebrikler! Bildirim sisteminiz başarıyla yapılandırıldı ve çalışıyor.",
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      backgroundColor: Color(0xFF10B981),
+                      content: Text("✅ Test bildirimi telefonunuza gönderildi! Üst bildirim çubuğunuzu kontrol edin."),
+                    ),
+                  );
+                }
+              },
+            ),
           ),
         ],
       ),
@@ -722,14 +758,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Paket Kimliği", style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
-              Text("com.kamuradar.app", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
-            ],
           ),
           const SizedBox(height: 10),
           const Divider(height: 1),

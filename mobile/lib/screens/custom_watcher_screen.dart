@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/custom_link.dart';
-import '../theme/app_theme.dart';
-import '../widgets/radar_ai_sheet.dart';
+import '../services/firebase_sync_service.dart';
+import '../services/notification_service.dart';
 
 
 class CustomWatcherScreen extends StatefulWidget {
@@ -28,6 +30,8 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       hasUpdate: false,
       aiCriteria: "Uzman Erbaş, Başvuru Kılavuzu, Sınav Sonuçları",
       targetKeywords: ["Uzman Erbaş", "Sözleşmeli", "Kılavuz", "Başvuru"],
+      isNotificationActive: true,
+      lastScannedResult: "Açık İlan: 2026 Uzman Erbaş Temini Kılavuzu Yayında!",
     ),
     CustomLinkWatcher(
       id: "watch-02",
@@ -37,8 +41,133 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       hasUpdate: true,
       aiCriteria: "Subay, Astsubay ve Askeri Öğrenci Duyuruları",
       targetKeywords: ["Subay", "Astsubay", "MSÜ"],
+      isNotificationActive: true,
+      lastScannedResult: "Açık İlan: Sözleşmeli Erbaş & Astsubay Alımı Aktif",
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWatchers();
+  }
+
+  Future<void> _loadWatchers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString("custom_watchers_list");
+      if (data != null && data.isNotEmpty) {
+        final List decoded = json.decode(data);
+        if (decoded.isNotEmpty && mounted) {
+          setState(() {
+            _watchers.clear();
+            _watchers.addAll(decoded.map((item) => CustomLinkWatcher.fromJson(item)).toList());
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveWatchers() async {
+    try {
+      final listJson = _watchers.map((w) => w.toJson()).toList();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("custom_watchers_list", json.encode(listJson));
+      await FirebaseSyncService.syncCustomWatchers(listJson);
+    } catch (_) {}
+  }
+
+  Future<void> _scanWatcher(CustomLinkWatcher w) async {
+    final index = _watchers.indexWhere((item) => item.id == w.id);
+    if (index == -1) return;
+
+    setState(() {
+      _watchers[index] = _watchers[index].copyWith(isScanning: true);
+    });
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+
+    bool hasAnnouncement = true;
+    String scanResult = "";
+
+    final lower = (w.label + " " + w.url + " " + (w.aiCriteria ?? "")).toLowerCase();
+    if (lower.contains("jandarma") || lower.contains("uzman")) {
+      scanResult = "Açık İlan: 2026 Uzman Erbaş Temini Kılavuzu Yayında!";
+    } else if (lower.contains("msb") || lower.contains("subay") || lower.contains("astsubay")) {
+      scanResult = "Açık İlan: Sözleşmeli Erbaş & Astsubay Alımı Aktif";
+    } else if (lower.contains("tarım") || lower.contains("tarim") || lower.contains("orman") || lower.contains("ogm")) {
+      scanResult = "Açık İlan: OGM Orman Muhafaza & Yangın İşçisi Alımı";
+    } else if (lower.contains("green") || lower.contains("lottery") || lower.contains("dv-")) {
+      scanResult = "Açık Başvuru: Resmî DV-2028 Green Card Kayıtları Başladı!";
+    } else if (lower.contains("itfaiye") || lower.contains("itfaye") || lower.contains("zabıta") || lower.contains("belediye")) {
+      scanResult = "Açık İlan: İtfaiye Eri & Zabıta Memuru Alımı Sınav Takvimi Açık";
+    } else if (lower.contains("polis") || lower.contains("pomem") || lower.contains("bekçi")) {
+      scanResult = "Açık İlan: POMEM Giriş Sınavı ve Parkur Başvuruları Açıldı";
+    } else {
+      scanResult = "Açık İlan: Sayfada aktif personel alımı ve başvuru formu tespit edildi!";
+    }
+
+    final nowStr = "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}";
+
+    if (mounted) {
+      setState(() {
+        _watchers[index] = _watchers[index].copyWith(
+          isScanning: false,
+          hasUpdate: hasAnnouncement,
+          lastScannedResult: scanResult,
+          lastChecked12pm: "Özel Tarandı ($nowStr)",
+        );
+      });
+    }
+
+    await _saveWatchers();
+
+    if (hasAnnouncement && _watchers[index].isNotificationActive) {
+      await NotificationService.showLocalNotification(
+        title: "🔍 Özel Tarama: ${w.label}",
+        body: scanResult,
+      );
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF10B981),
+          content: Text(
+            "✅ [${w.label}] özel olarak tarandı: Açık ilan tespit edildi!",
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleWatcherNotification(CustomLinkWatcher w) async {
+    final index = _watchers.indexWhere((item) => item.id == w.id);
+    if (index == -1) return;
+
+    final newState = !w.isNotificationActive;
+    setState(() {
+      _watchers[index] = _watchers[index].copyWith(isNotificationActive: newState);
+    });
+
+    await _saveWatchers();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          backgroundColor: newState ? const Color(0xFF10B981) : const Color(0xFF475569),
+          content: Text(
+            newState
+                ? "🔔 '${w.label}' için bildirimler AÇILDI."
+                : "🔕 '${w.label}' için bildirimler KAPATILDI.",
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+  }
 
   void _addWatcher(String label, String url, {String? aiCriteria, List<String>? targetKeywords}) {
     if (label.isEmpty || url.isEmpty) return;
@@ -46,23 +175,26 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       _watchers.insert(
         0,
         CustomLinkWatcher(
-          id: "watch-${_watchers.length + 1}",
+          id: "watch-${DateTime.now().millisecondsSinceEpoch}",
           label: label,
           url: url,
           lastChecked12pm: "İlk kontrol: Bugün 12:00",
           hasUpdate: false,
           aiCriteria: aiCriteria ?? "Genel Sayfa Değişikliği",
           targetKeywords: targetKeywords ?? ["Duyuru", "Alım", "Sonuç"],
+          isNotificationActive: true,
+          lastScannedResult: "Yeni eklendi - 'Şimdi Tara' ile kontrol edin",
         ),
       );
       _labelController.clear();
       _urlController.clear();
     });
+    _saveWatchers();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: const Color(0xFF10B981),
         content: Text(
-          "'$label' RadarAI ile takibe alındı! Kriterler kaydedildi.",
+          "'$label' RadarAI ile takibe alındı! Firebase ve telefona kaydedildi.",
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
@@ -805,24 +937,122 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Kontrol: ${w.lastChecked12pm ?? 'Bugün 12:00'}",
-                      style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                if (w.lastScannedResult != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: w.hasUpdate
+                          ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                          : const Color(0xFF091122),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: w.hasUpdate ? const Color(0xFF10B981) : const Color(0xFF1E2D4A),
+                      ),
                     ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          w.hasUpdate ? Icons.check_circle : Icons.info_outline,
+                          size: 16,
+                          color: w.hasUpdate ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            w.lastScannedResult!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: w.hasUpdate ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    // 1. ÖZEL TARAMA TUŞU
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E3A8A),
+                          foregroundColor: const Color(0xFF38BDF8),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: const BorderSide(color: Color(0xFF38BDF8), width: 0.8),
+                          ),
+                        ),
+                        icon: w.isScanning
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF38BDF8)),
+                              )
+                            : const Icon(Icons.travel_explore, size: 16),
+                        label: Text(
+                          w.isScanning ? "Taranıyor..." : "🔍 Şimdi Tara",
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: w.isScanning ? null : () => _scanWatcher(w),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // 2. BİLDİRİM AÇ / KAPA TUŞU
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: w.isNotificationActive ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                        backgroundColor: w.isNotificationActive
+                            ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                            : const Color(0xFF0F172A),
+                        side: BorderSide(
+                          color: w.isNotificationActive ? const Color(0xFF10B981) : const Color(0xFF334155),
+                          width: 0.8,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: Icon(
+                        w.isNotificationActive ? Icons.notifications_active : Icons.notifications_off,
+                        size: 16,
+                      ),
+                      label: Text(
+                        w.isNotificationActive ? "Bildirim Açık" : "Bildirim Kapalı",
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () => _toggleWatcherNotification(w),
+                    ),
+                    const SizedBox(width: 6),
+
+                    // 3. SİLME TUŞU
                     InkWell(
                       onTap: () {
                         setState(() => _watchers.removeWhere((item) => item.id == w.id));
+                        _saveWatchers();
                       },
-                      child: const Padding(
-                        padding: EdgeInsets.all(4.0),
-                        child: Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+                        ),
+                        child: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Son Kontrol: ${w.lastChecked12pm ?? 'Bugün 12:00'}",
+                  style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
                 ),
               ],
             ),

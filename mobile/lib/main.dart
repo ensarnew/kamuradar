@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'screens/home_feed_screen.dart';
-
 import 'screens/custom_watcher_screen.dart';
 import 'screens/family_subscription_screen.dart';
 import 'screens/profile_settings_screen.dart';
+import 'screens/login_screen.dart';
 import 'widgets/radar_ai_sheet.dart';
 import 'services/notification_service.dart';
 import 'services/ad_service.dart';
+import 'services/firebase_sync_service.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -19,6 +20,7 @@ void main() {
     try {
       await Firebase.initializeApp();
       await NotificationService.initialize();
+      await FirebaseSyncService.restoreUserDataFromCloud();
     } catch (e) {
       debugPrint("Firebase başlatma notu: $e");
     }
@@ -31,7 +33,6 @@ void main() {
   });
 }
 
-
 class KamuRadarApp extends StatelessWidget {
   const KamuRadarApp({Key? key}) : super(key: key);
 
@@ -41,8 +42,58 @@ class KamuRadarApp extends StatelessWidget {
       title: 'KamuRadar PRO',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const MainNavigationScreen(),
+      home: const AuthGate(),
     );
+  }
+}
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({Key? key}) : super(key: key);
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool? _isAuthenticated;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    final hasAuth = await FirebaseSyncService.hasCompletedAuth();
+    if (mounted) {
+      setState(() {
+        _isAuthenticated = hasAuth;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isAuthenticated == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF091122),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF38BDF8)),
+        ),
+      );
+    }
+
+    if (_isAuthenticated == false) {
+      return LoginScreen(
+        onLoginSuccess: () {
+          setState(() {
+            _isAuthenticated = true;
+          });
+        },
+      );
+    }
+
+    return const MainNavigationScreen();
   }
 }
 
@@ -57,9 +108,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
   bool _isVip = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadVipStatus();
+  }
+
+  Future<void> _loadVipStatus() async {
+    final vip = await FirebaseSyncService.isVip();
+    if (mounted) {
+      setState(() {
+        _isVip = vip;
+      });
+    }
+  }
+
   void _upgradeToVip() {
     setState(() {
-      _currentIndex = 2; // Aile Planı sekmesine yönlendir (Açık İlanlar kaldırıldığı için indeks 2)
+      _currentIndex = 2; // Aile Planı sekmesine yönlendir
     });
   }
 
@@ -73,7 +139,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       const CustomWatcherScreen(),
       FamilySubscriptionScreen(
         isVip: _isVip,
-        onPlanPurchased: () => setState(() => _isVip = true),
+        onPlanPurchased: () async {
+          await FirebaseSyncService.setVipStatus(true);
+          setState(() => _isVip = true);
+        },
       ),
       ProfileSettingsScreen(
         isVip: _isVip,

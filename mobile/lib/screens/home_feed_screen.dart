@@ -7,6 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/cache_service.dart';
 import '../services/ad_service.dart';
+import '../services/firebase_sync_service.dart';
+import '../services/notification_service.dart';
 import 'profile_settings_screen.dart';
 import '../widgets/announcement_detail_sheet.dart';
 
@@ -1842,13 +1844,21 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     setState(() {
       channel.isAlarmActive = !channel.isAlarmActive;
     });
-    CacheService.saveActiveAlarms(
-      _channels.where((c) => c.isAlarmActive).map((c) => c.id).toList(),
-    );
+
+    final activeAlarms = _channels.where((c) => c.isAlarmActive).map((c) => c.id).toList();
+    CacheService.saveActiveAlarms(activeAlarms);
+    FirebaseSyncService.syncAlarms(activeAlarms);
+
+    if (channel.isAlarmActive) {
+      NotificationService.subscribeToChannel("topic_${channel.id}");
+    } else {
+      NotificationService.unsubscribeFromChannel("topic_${channel.id}");
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(channel.isAlarmActive
-            ? "🔔 ${channel.title} radara eklendi! İlan çıktığında bildirim kotanızdan iletilecektir."
+            ? "🔔 ${channel.title} radara eklendi! Firebase ve telefona kaydedildi."
             : "${channel.title} takibi kapatıldı."),
       ),
     );
