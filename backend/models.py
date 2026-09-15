@@ -15,6 +15,7 @@ class ExamStatus(str, Enum):
     ACTIVE = "Başvurular Açık"
     UPCOMING = "Yakında Başlayacak"
     ANNOUNCED = "Sonuçlar Açıklandı"
+    COMPLETED = "completed"
 
 class ExamScheduleItem(BaseModel):
     id: str
