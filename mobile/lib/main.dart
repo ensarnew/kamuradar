@@ -11,19 +11,20 @@ import 'services/ad_service.dart';
 import 'services/firebase_sync_service.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const KamuRadarApp());
 
-  // Arka plan servislerini UI'ı bloke etmeden güvenli başlat
+  try {
+    await Firebase.initializeApp();
+    await NotificationService.initialize();
+  } catch (e) {
+    debugPrint("Firebase başlatma notu: $e");
+  }
+
   Future.microtask(() async {
     try {
-      await Firebase.initializeApp();
-      await NotificationService.initialize();
       await FirebaseSyncService.restoreUserDataFromCloud();
-    } catch (e) {
-      debugPrint("Firebase başlatma notu: $e");
-    }
+    } catch (_) {}
 
     try {
       await AdService.instance.initialize(testMode: false);
@@ -31,6 +32,8 @@ void main() {
       debugPrint("Unity Ads başlatma notu: $e");
     }
   });
+
+  runApp(const KamuRadarApp());
 }
 
 class KamuRadarApp extends StatelessWidget {
@@ -136,7 +139,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         isVip: _isVip,
         onUpgradeVip: _upgradeToVip,
       ),
-      const CustomWatcherScreen(),
+      CustomWatcherScreen(
+        isVip: _isVip,
+        onUpgradeVip: _upgradeToVip,
+      ),
       FamilySubscriptionScreen(
         isVip: _isVip,
         onPlanPurchased: () async {

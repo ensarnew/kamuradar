@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/firebase_sync_service.dart';
 import '../theme/app_theme.dart';
 
@@ -29,11 +30,27 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     _isPlanPurchased = widget.isVip;
     if (_isPlanPurchased) {
       _generatedInviteCode = "KAMU77";
-      _members = [
-        "Ahmet Yılmaz (11.09.2026 katıldı)",
-        "Mustafa Kaya (12.09.2026 katıldı)",
-      ];
     }
+    _loadMembers();
+  }
+
+  Future<void> _loadMembers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList("family_members_list");
+      if (saved != null && mounted) {
+        setState(() {
+          _members = saved;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveMembers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList("family_members_list", _members);
+    } catch (_) {}
   }
 
   // 1. Aboneliği Satın Al (Aylık veya Yıllık)
@@ -47,11 +64,9 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     setState(() {
       _isPlanPurchased = true;
       _generatedInviteCode = "KAMU77"; // 6 haneli üretilen kod
-      _members = [
-        "Ahmet Yılmaz (11.09.2026 katıldı)",
-        "Mustafa Kaya (12.09.2026 katıldı)",
-      ];
+      _members = []; // Başlangıçta tüm 3 davet yuvası boştur, arkadaşlar katıldıkça dolar
     });
+    await _saveMembers();
 
     await FirebaseSyncService.setVipStatus(true, plan: planKey);
     widget.onPlanPurchased?.call();
@@ -94,6 +109,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                 _generatedInviteCode = null;
                 _members.clear();
               });
+              await _saveMembers();
               await FirebaseSyncService.setVipStatus(false, plan: "free");
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -398,9 +414,11 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
               const Text("Grup Kontenjanı (Siz + 3 Kişi)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 8),
               _buildSlot("1. Ensar (Siz - Yönetici)", "Aktif", const Color(0xFF38BDF8), true),
-              ..._members.map((m) => _buildSlot(m, "Aktif", const Color(0xFF10B981), true)),
-              if (_members.length < _maxExtraMembers)
-                _buildSlot("Boş Davet Yuvası (${_maxExtraMembers - _members.length} Kişilik Yer Var)", "Arkadaşınızı davet edin", const Color(0xFF64748B), false),
+              for (int i = 0; i < _maxExtraMembers; i++)
+                if (i < _members.length)
+                  _buildSlot("${i + 2}. ${_members[i]}", "Aile Üyesi • Aktif", const Color(0xFF10B981), true)
+                else
+                  _buildSlot("${i + 2}. Boş Davet Yuvası", "Arkadaşınızı davet edin", const Color(0xFF64748B), false),
             ],
 
             const SizedBox(height: 24),

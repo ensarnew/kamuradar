@@ -151,11 +151,27 @@ class FirebaseSyncService {
   // 6. Google ile Giriş Yapılmış mı / Oturum Kalıcı mı Kontrolü
   static Future<bool> hasCompletedAuth() async {
     try {
-      if (_auth.currentUser != null) return true;
       final prefs = await SharedPreferences.getInstance();
-      return (prefs.getBool(_keyIsGoogleLoggedIn) ?? false) || (prefs.getBool(_keyIsGuest) ?? false);
-    } catch (_) {
+      final isGoogle = prefs.getBool(_keyIsGoogleLoggedIn) ?? false;
+      final isGuest = prefs.getBool(_keyIsGuest) ?? false;
+      if (isGoogle || isGuest) return true;
+
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await prefs.setBool(_keyIsGoogleLoggedIn, true);
+          return true;
+        }
+      } catch (_) {}
+
       return false;
+    } catch (_) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        return (prefs.getBool(_keyIsGoogleLoggedIn) ?? false) || (prefs.getBool(_keyIsGuest) ?? false);
+      } catch (_) {
+        return false;
+      }
     }
   }
 

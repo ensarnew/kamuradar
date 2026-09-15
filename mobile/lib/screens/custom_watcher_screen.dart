@@ -8,14 +8,21 @@ import '../services/notification_service.dart';
 
 
 class CustomWatcherScreen extends StatefulWidget {
-  const CustomWatcherScreen({Key? key}) : super(key: key);
+  final bool isVip;
+  final VoidCallback? onUpgradeVip;
+
+  const CustomWatcherScreen({
+    Key? key,
+    this.isVip = false,
+    this.onUpgradeVip,
+  }) : super(key: key);
 
   @override
   State<CustomWatcherScreen> createState() => _CustomWatcherScreenState();
 }
 
 class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
-  bool _isUserVip = false;
+  late bool _isUserVip;
   final TextEditingController _labelController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _aiPromptController = TextEditingController();
@@ -49,7 +56,28 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
   @override
   void initState() {
     super.initState();
+    _isUserVip = widget.isVip;
+    _checkVip();
     _loadWatchers();
+  }
+
+  Future<void> _checkVip() async {
+    final vip = await FirebaseSyncService.isVip();
+    if (mounted && (vip != _isUserVip)) {
+      setState(() {
+        _isUserVip = vip;
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(CustomWatcherScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isVip != _isUserVip) {
+      setState(() {
+        _isUserVip = widget.isVip;
+      });
+    }
   }
 
   Future<void> _loadWatchers() async {
