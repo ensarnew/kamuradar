@@ -140,6 +140,14 @@ class FirebaseSyncService {
       await prefs.setString(_keyVipPlan, planCloud);
       await prefs.setBool("is_family_group_owner", isOwner);
 
+      // Sabit Davet Kodu veya Katılınan Kodu Buluttan Geri Yükle
+      if (data.containsKey('invite_code') && data['invite_code'] != null) {
+        await prefs.setString("user_family_invite_code", data['invite_code'].toString());
+      }
+      if (data.containsKey('joined_family_code') && data['joined_family_code'] != null) {
+        await prefs.setString("joined_family_code", data['joined_family_code'].toString());
+      }
+
       // Alarmları Geri Yükle
       if (data.containsKey('active_alarms')) {
         final List<dynamic> alarmsCloud = data['active_alarms'] ?? [];

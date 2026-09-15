@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -30,12 +31,21 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
   final int _maxExtraMembers = 3;
   bool _isGroupOwner = false;
   String? _joinedViaCode;
+  String? _groupOwnerName;
+  StreamSubscription<DocumentSnapshot>? _familyCodeSub;
 
   @override
   void initState() {
     super.initState();
     _isPlanPurchased = widget.isVip;
     _checkPlanRole();
+  }
+
+  @override
+  void dispose() {
+    _familyCodeSub?.cancel();
+    _friendCodeController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkPlanRole() async {
@@ -54,6 +64,9 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             _joinedViaCode = joinedCode;
           });
         }
+        if (joinedCode != null && joinedCode.isNotEmpty) {
+          _listenToFamilyCode(joinedCode);
+        }
       } else if (isVip && isOwner) {
         // Satın alan grup yöneticisi
         if (mounted) {
@@ -62,8 +75,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             _isPlanPurchased = true;
           });
         }
-        _loadMembers();
-        _loadOrGenerateInviteCode();
+        await _loadOrGenerateInviteCode();
       } else {
         if (mounted) {
           setState(() {
@@ -82,63 +94,116 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     return "KR-$suffix";
   }
 
+  // 1. KOD ASLA DEĞİŞMEZ: Önce Firestore'a bakar, varsa kesinlikle onu korur
   Future<void> _loadOrGenerateInviteCode() async {
     try {
+      final user = FirebaseAuth.instance.currentUser;
       final prefs = await SharedPreferences.getInstance();
-      String? code = prefs.getString("user_family_invite_code");
-      if (code == null || code.isEmpty || code == "KAMU77") {
-        code = _generateUniqueCode();
-        await prefs.setString("user_family_invite_code", code);
+      String? code;
+
+      // Adım A: Firestore users dokümanında kayıtlı sabit invite_code var mı?
+      if (user != null) {
+        try {
+          final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+          if (userDoc.exists && userDoc.data()?['invite_code'] != null) {
+            final savedCode = userDoc.data()!['invite_code'].toString();
+            if (savedCode.isNotEmpty && savedCode != "KAMU77") {
+              code = savedCode;
+            }
+          }
+
+          // Adım B: users altında yoksa family_codes koleksiyonunda bu owner_uid ile oluşturulmuş kod var mı?
+          if (code == null || code.isEmpty) {
+            final querySnap = await FirebaseFirestore.instance
+                .collection('family_codes')
+                .where('owner_uid', isEqualTo: user.uid)
+                .limit(1)
+                .get();
+            if (querySnap.docs.isNotEmpty) {
+              code = querySnap.docs.first.id;
+            }
+          }
+        } catch (_) {}
       }
+
+      // Adım C: Yerel hafızaya bak
+      if (code == null || code.isEmpty) {
+        final localCode = prefs.getString("user_family_invite_code");
+        if (localCode != null && localCode.isNotEmpty && localCode != "KAMU77") {
+          code = localCode;
+        }
+      }
+
+      // Adım D: Hiçbir yerde kod yoksa İLK VE TEK SEFERLİK benzersiz kod üret
+      if (code == null || code.isEmpty) {
+        code = _generateUniqueCode();
+      }
+
+      // Hem yerel hafızaya hem Firebase users dokümanına KALICI olarak sabitle
+      await prefs.setString("user_family_invite_code", code);
+      if (user != null) {
+        try {
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+            'invite_code': code,
+            'is_vip': true,
+          }, SetOptions(merge: true));
+        } catch (_) {}
+      }
+
       if (mounted) {
         setState(() {
           _generatedInviteCode = code;
         });
       }
 
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final docRef = FirebaseFirestore.instance.collection('family_codes').doc(code);
-        final snap = await docRef.get();
-        if (snap.exists && snap.data()?['members'] != null) {
-          final cloudMembers = List<String>.from(snap.data()!['members']);
-          if (mounted) {
-            setState(() {
-              _members = cloudMembers;
-            });
-            await prefs.setStringList("family_members_list", cloudMembers);
-          }
-        } else {
-          await docRef.set({
-            'code': code,
-            'owner_uid': user.uid,
-            'owner_email': user.email ?? '',
-            'created_at': FieldValue.serverTimestamp(),
-            'is_active': _isPlanPurchased,
-            'members': _members,
-          }, SetOptions(merge: true));
+      // Firebase'deki o kod dokümanını canlı dinle
+      _listenToFamilyCode(code);
+    } catch (_) {}
+  }
+
+  // Canlı Firestore Dinleyicisi: Biri girdiğinde ekranda anında 2, 3 veya 4. sıraya düşer!
+  void _listenToFamilyCode(String code) {
+    _familyCodeSub?.cancel();
+    final docRef = FirebaseFirestore.instance.collection('family_codes').doc(code);
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (_isGroupOwner) {
+      docRef.set({
+        'code': code,
+        'owner_uid': user?.uid ?? 'anonymous',
+        'owner_email': user?.email ?? '',
+        'owner_name': (user?.displayName != null && user!.displayName!.isNotEmpty)
+            ? user.displayName!
+            : (user?.email != null && user!.email!.isNotEmpty)
+                ? user.email!.split('@')[0]
+                : 'Yönetici',
+        'is_active': true,
+        'max_members': _maxExtraMembers,
+      }, SetOptions(merge: true));
+    }
+
+    _familyCodeSub = docRef.snapshots().listen((snap) {
+      if (!mounted || !snap.exists) return;
+      final data = snap.data();
+      if (data == null) return;
+
+      final ownerName = (data['owner_name'] ?? data['owner_email'] ?? 'Grup Yöneticisi').toString();
+      final cloudMembersRaw = data['members'] as List<dynamic>? ?? [];
+      final List<String> parsedMembers = [];
+      for (var item in cloudMembersRaw) {
+        if (item is Map) {
+          parsedMembers.add((item['name'] ?? item['email'] ?? 'Aile Üyesi').toString());
+        } else if (item is String) {
+          parsedMembers.add(item);
         }
       }
-    } catch (_) {}
-  }
 
-  Future<void> _loadMembers() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getStringList("family_members_list");
-      if (saved != null && mounted) {
-        setState(() {
-          _members = saved;
-        });
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _saveMembers() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList("family_members_list", _members);
-    } catch (_) {}
+      setState(() {
+        _groupOwnerName = ownerName;
+        _members = parsedMembers;
+      });
+      SharedPreferences.getInstance().then((p) => p.setStringList("family_members_list", parsedMembers));
+    });
   }
 
   // 1. Aboneliği Satın Al (Aylık veya Yıllık)
@@ -150,11 +215,25 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     final planKey = _selectedPlanIndex == 1 ? "yearly_vip" : "monthly_vip";
 
     final prefs = await SharedPreferences.getInstance();
-    String? code = prefs.getString("user_family_invite_code");
+    final user = FirebaseAuth.instance.currentUser;
+
+    // KOD ASLA DEĞİŞMEZ: Önce mevcut kodu Firestore'dan veya yerelden al
+    String? code;
+    if (user != null) {
+      try {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (userDoc.exists && userDoc.data()?['invite_code'] != null) {
+          code = userDoc.data()!['invite_code'].toString();
+        }
+      } catch (_) {}
+    }
+    code ??= prefs.getString("user_family_invite_code");
+
     if (code == null || code.isEmpty || code == "KAMU77") {
       code = _generateUniqueCode();
-      await prefs.setString("user_family_invite_code", code);
     }
+
+    await prefs.setString("user_family_invite_code", code);
     await prefs.setBool("is_family_group_owner", true);
     await prefs.remove("joined_family_code");
 
@@ -162,22 +241,34 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
       _isPlanPurchased = true;
       _isGroupOwner = true;
       _generatedInviteCode = code;
-      _members = []; // Başlangıçta tüm 3 davet yuvası boştur, arkadaşlar katıldıkça dolar
     });
-    await _saveMembers();
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'invite_code': code,
+          'is_vip': true,
+          'vip_plan': planKey,
+        }, SetOptions(merge: true));
+      }
+
       await FirebaseFirestore.instance.collection('family_codes').doc(code).set({
         'code': code,
         'owner_uid': user?.uid ?? 'anonymous',
         'owner_email': user?.email ?? '',
+        'owner_name': (user?.displayName != null && user!.displayName!.isNotEmpty)
+            ? user.displayName!
+            : (user?.email != null && user!.email!.isNotEmpty)
+                ? user.email!.split('@')[0]
+                : 'Yönetici',
         'plan': planKey,
-        'members': [],
         'is_active': true,
         'created_at': FieldValue.serverTimestamp(),
+        'max_members': _maxExtraMembers,
       }, SetOptions(merge: true));
     } catch (_) {}
+
+    _listenToFamilyCode(code);
 
     await FirebaseSyncService.setVipStatus(true, plan: planKey);
     widget.onPlanPurchased?.call();
@@ -216,6 +307,8 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               final oldCode = _generatedInviteCode;
+              _familyCodeSub?.cancel();
+
               final prefs = await SharedPreferences.getInstance();
               await prefs.setBool("is_family_group_owner", false);
               await prefs.remove("joined_family_code");
@@ -228,7 +321,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                 _generatedInviteCode = null;
                 _members.clear();
               });
-              await _saveMembers();
+
               if (oldCode != null) {
                 try {
                   await FirebaseFirestore.instance.collection('family_codes').doc(oldCode).update({
@@ -250,44 +343,80 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     );
   }
 
-  // 3. Karşı Tarafın Kod Girme Alanı (KESİN DOĞRULAMA - GEÇERSİZ KODLAR ASLA VIP YAPMAZ)
+  // 3. Karşı Tarafın Kod Girme Alanı (FİREBASE KONTROLÜ - DOLU İSE DOLU UYARISI VERİR)
   Future<void> _submitFriendInviteCode(String code) async {
     final cleanCode = code.trim().toUpperCase();
     if (cleanCode.isEmpty) return;
 
+    final user = FirebaseAuth.instance.currentUser;
     bool isValid = false;
     String? errorMessage;
+    String? targetOwnerName;
 
     try {
       final doc = await FirebaseFirestore.instance.collection('family_codes').doc(cleanCode).get();
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         final bool isActive = data['is_active'] == true;
+        final String ownerUid = (data['owner_uid'] ?? '').toString();
+        final String ownerName = (data['owner_name'] ?? data['owner_email'] ?? 'Grup Yöneticisi').toString();
+        targetOwnerName = ownerName;
+
         if (!isActive) {
           errorMessage = "Bu davet koduna ait aile aboneliği artık aktif değil!";
+        } else if (user != null && ownerUid == user.uid) {
+          errorMessage = "Kendi davet kodunuzu giremezsiniz! Siz zaten bu grubun yöneticisisiniz.";
         } else {
-          final List currentMembers = List.from(data['members'] ?? []);
-          if (currentMembers.length >= _maxExtraMembers) {
-            errorMessage = "Bu aile kodunun 3 kişilik davet kotası tamamen dolmuş!";
-          } else {
-            final user = FirebaseAuth.instance.currentUser;
-            final String memberName = (user?.displayName != null && user!.displayName!.isNotEmpty)
-                ? user.displayName!
-                : (user?.email != null && user!.email!.isNotEmpty)
-                    ? user.email!
-                    : "Arkadaş #${currentMembers.length + 1}";
+          final List currentMembersRaw = List.from(data['members'] ?? []);
+          final String myUid = user?.uid ?? '';
+          final String myIdentifier = (user?.displayName != null && user!.displayName!.isNotEmpty)
+              ? user.displayName!
+              : (user?.email != null && user!.email!.isNotEmpty)
+                  ? user.email!
+                  : "Arkadaş #${currentMembersRaw.length + 1}";
 
-            if (!currentMembers.contains(memberName)) {
-              currentMembers.add(memberName);
-              await FirebaseFirestore.instance.collection('family_codes').doc(cleanCode).update({
-                'members': currentMembers,
-              });
+          bool alreadyIn = false;
+          for (var m in currentMembersRaw) {
+            if (m is Map && (m['uid'] == myUid || m['name'] == myIdentifier || m['email'] == user?.email)) {
+              alreadyIn = true;
+              break;
+            } else if (m is String && m == myIdentifier) {
+              alreadyIn = true;
+              break;
+            }
+          }
+
+          if (alreadyIn) {
+            isValid = true;
+          } else if (currentMembersRaw.length >= _maxExtraMembers) {
+            // KULLANICININ İSTEDİĞİ DOLU UYARISI:
+            errorMessage = "Kod sahibinin ($ownerName) aile planı dolu! (3/3 kişi katılmış).";
+          } else {
+            // Kod sahibinin sırasına yeni üyeyi ekle
+            final newMemberMap = {
+              'uid': myUid,
+              'email': user?.email ?? '',
+              'name': myIdentifier,
+              'joined_at': DateTime.now().toIso8601String(),
+            };
+            currentMembersRaw.add(newMemberMap);
+
+            await FirebaseFirestore.instance.collection('family_codes').doc(cleanCode).update({
+              'members': currentMembersRaw,
+            });
+
+            if (user != null) {
+              await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+                'is_vip': true,
+                'vip_plan': 'family_invited_vip',
+                'joined_family_code': cleanCode,
+                'family_owner_uid': ownerUid,
+              }, SetOptions(merge: true));
             }
             isValid = true;
           }
         }
       } else {
-        // KOD FİREBASE'DE YOKSA KESİNLİKLE GEÇERSİZDİR!
         errorMessage = "Geçersiz davet kodu! Bu kod sistemde kayıtlı değildir.";
       }
     } catch (e) {
@@ -305,13 +434,16 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
         _isGroupOwner = false;
         _joinedViaCode = cleanCode;
       });
+
+      _listenToFamilyCode(cleanCode);
+
       await FirebaseSyncService.setVipStatus(true, plan: "family_invited_vip");
       widget.onPlanPurchased?.call();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFF10B981),
-            content: Text("🎉 Tebrikler! '$cleanCode' davet kodu doğrulandı. Aile Planı ile anında VIP oldunuz!"),
+            content: Text("🎉 Tebrikler! Kod sahibinin ($targetOwnerName) aile planına başarıyla katıldınız. Tüm VIP avantajlarınız sınırsız aktif!"),
           ),
         );
       }
@@ -320,6 +452,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 4),
             content: Text(errorMessage ?? "Geçersiz davet kodu! Lütfen kodu kontrol edin."),
           ),
         );
@@ -688,6 +821,20 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                const Text("Grup Kontenjanı (Yönetici + 3 Kişi)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 8),
+                _buildSlot(
+                  "1. ${_groupOwnerName ?? 'Grup Yöneticisi'} (Yönetici)",
+                  "Aktif",
+                  const Color(0xFF38BDF8),
+                  true,
+                ),
+                for (int i = 0; i < _maxExtraMembers; i++)
+                  if (i < _members.length)
+                    _buildSlot("${i + 2}. ${_members[i]}", "Aile Üyesi • Aktif", const Color(0xFF10B981), true)
+                  else
+                    _buildSlot("${i + 2}. Boş Davet Yuvası", "Bekleniyor", const Color(0xFF64748B), false),
               ],
             ],
 
