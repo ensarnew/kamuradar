@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/custom_link.dart';
@@ -33,23 +34,23 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       id: "watch-01",
       url: "https://vatandas.jandarma.gov.tr/PTM/Giris",
       label: "Jandarma Uzman Erbaş Alımı Nöbetçisi",
-      lastChecked12pm: "Bugün 12:00",
+      lastChecked12pm: "Gündüz Taraması (10:00 - 22:00)",
       hasUpdate: false,
       aiCriteria: "Uzman Erbaş, Başvuru Kılavuzu, Sınav Sonuçları",
       targetKeywords: ["Uzman Erbaş", "Sözleşmeli", "Kılavuz", "Başvuru"],
       isNotificationActive: true,
-      lastScannedResult: "Açık İlan: 2026 Uzman Erbaş Temini Kılavuzu Yayında!",
+      lastScannedResult: "Gündüz periyodu (10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00) nöbette",
     ),
     CustomLinkWatcher(
       id: "watch-02",
       url: "https://personeltemin.msb.gov.tr/duyurular",
       label: "MSB Personel Temin Duyurular",
-      lastChecked12pm: "Bugün 12:00",
-      hasUpdate: true,
+      lastChecked12pm: "Gündüz Taraması (10:00 - 22:00)",
+      hasUpdate: false,
       aiCriteria: "Subay, Astsubay ve Askeri Öğrenci Duyuruları",
       targetKeywords: ["Subay", "Astsubay", "MSÜ"],
       isNotificationActive: true,
-      lastScannedResult: "Açık İlan: Sözleşmeli Erbaş & Astsubay Alımı Aktif",
+      lastScannedResult: "Gündüz periyodu (10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00) nöbette",
     ),
   ];
 
@@ -113,29 +114,75 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       _watchers[index] = _watchers[index].copyWith(isScanning: true);
     });
 
-    await Future.delayed(const Duration(milliseconds: 1200));
-
-    bool hasAnnouncement = true;
+    bool hasAnnouncement = false;
     String scanResult = "";
-
-    final lower = (w.label + " " + w.url + " " + (w.aiCriteria ?? "")).toLowerCase();
-    if (lower.contains("jandarma") || lower.contains("uzman")) {
-      scanResult = "Açık İlan: 2026 Uzman Erbaş Temini Kılavuzu Yayında!";
-    } else if (lower.contains("msb") || lower.contains("subay") || lower.contains("astsubay")) {
-      scanResult = "Açık İlan: Sözleşmeli Erbaş & Astsubay Alımı Aktif";
-    } else if (lower.contains("tarım") || lower.contains("tarim") || lower.contains("orman") || lower.contains("ogm")) {
-      scanResult = "Açık İlan: OGM Orman Muhafaza & Yangın İşçisi Alımı";
-    } else if (lower.contains("green") || lower.contains("lottery") || lower.contains("dv-")) {
-      scanResult = "Açık Başvuru: Resmî DV-2028 Green Card Kayıtları Başladı!";
-    } else if (lower.contains("itfaiye") || lower.contains("itfaye") || lower.contains("zabıta") || lower.contains("belediye")) {
-      scanResult = "Açık İlan: İtfaiye Eri & Zabıta Memuru Alımı Sınav Takvimi Açık";
-    } else if (lower.contains("polis") || lower.contains("pomem") || lower.contains("bekçi")) {
-      scanResult = "Açık İlan: POMEM Giriş Sınavı ve Parkur Başvuruları Açıldı";
-    } else {
-      scanResult = "Açık İlan: Sayfada aktif personel alımı ve başvuru formu tespit edildi!";
-    }
-
     final nowStr = "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}";
+
+    try {
+      String rawUrl = w.url.trim();
+      if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+        rawUrl = "https://$rawUrl";
+      }
+
+      final uri = Uri.parse(rawUrl);
+      final response = await http.get(
+        uri,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        },
+      ).timeout(const Duration(seconds: 9));
+
+      if (response.statusCode >= 200 && response.statusCode < 400) {
+        final bodyText = response.body.toLowerCase();
+
+        // 1. Hedef anahtar kelimeleri derle
+        final Set<String> termsToSearch = {};
+        for (var k in w.targetKeywords) {
+          final clean = k.trim().toLowerCase();
+          if (clean.length >= 2) termsToSearch.add(clean);
+        }
+        if (w.aiCriteria != null && w.aiCriteria!.isNotEmpty) {
+          final parts = w.aiCriteria!.toLowerCase().split(RegExp(r'[,;\s]+'));
+          for (var p in parts) {
+            final clean = p.trim();
+            if (clean.length >= 3 && !["için", "olan", "veya", "bana", "alarm", "kur", "tara"].contains(clean)) {
+              termsToSearch.add(clean);
+            }
+          }
+        }
+
+        // 2. Gerçek HTML içerisinde kelime ara
+        final matchedTerms = <String>[];
+        for (var term in termsToSearch) {
+          if (bodyText.contains(term)) {
+            matchedTerms.add(term);
+          }
+        }
+
+        // 3. Genel kamu ilanı kalıpları
+        final generalTerms = ["personel alımı", "başvuru", "kılavuz", "duyuru", "kontenjan", "mülakat", "sonuç", "giriş sınavı", "uzman erbaş", "astsubay"];
+        final matchedGeneral = generalTerms.where((g) => bodyText.contains(g)).take(2).toList();
+
+        if (matchedTerms.isNotEmpty) {
+          hasAnnouncement = true;
+          scanResult = "🎯 Aktif Duyuru Tespit Edildi: '${matchedTerms.take(3).join(", ")}' (${response.statusCode} OK)";
+        } else if (matchedGeneral.isNotEmpty && termsToSearch.isEmpty) {
+          hasAnnouncement = true;
+          scanResult = "🔔 İlan/Duyuru Algılandı: Sayfada '${matchedGeneral.join(", ")}' terimleri aktif.";
+        } else {
+          hasAnnouncement = false;
+          scanResult = "Sayfa Stabil: Siteye bağlanıldı (${response.statusCode} OK), aranan kriterlerde yeni ilan bulunamadı.";
+        }
+      } else {
+        hasAnnouncement = false;
+        scanResult = "Sunucu Yanıtı: HTTP ${response.statusCode}. Sayfa içeriği alınamadı.";
+      }
+    } catch (e) {
+      hasAnnouncement = false;
+      scanResult = "Bağlantı Kurulamadı: Web adresine erişilemedi veya adres geçersiz ($e)";
+    }
 
     if (mounted) {
       setState(() {
@@ -143,7 +190,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
           isScanning: false,
           hasUpdate: hasAnnouncement,
           lastScannedResult: scanResult,
-          lastChecked12pm: "Özel Tarandı ($nowStr)",
+          lastChecked12pm: "Gündüz Taraması ($nowStr)",
         );
       });
     }
@@ -160,9 +207,11 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: const Color(0xFF10B981),
+          backgroundColor: hasAnnouncement ? const Color(0xFF10B981) : const Color(0xFF334155),
           content: Text(
-            "✅ [${w.label}] özel olarak tarandı: Açık ilan tespit edildi!",
+            hasAnnouncement
+                ? "✅ [${w.label}] tarandı: Açık duyuru tespit edildi!"
+                : "ℹ️ [${w.label}] tarandı: Yeni duyuru bulunamadı (Sayfa stabil).",
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ),
@@ -206,7 +255,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
           id: "watch-${DateTime.now().millisecondsSinceEpoch}",
           label: label,
           url: url,
-          lastChecked12pm: "İlk kontrol: Bugün 12:00",
+          lastChecked12pm: "Gündüz Taraması (10:00 - 22:00)",
           hasUpdate: false,
           aiCriteria: aiCriteria ?? "Genel Sayfa Değişikliği",
           targetKeywords: targetKeywords ?? ["Duyuru", "Alım", "Sonuç"],
@@ -458,7 +507,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                         Row(
                           children: const [
                             Text("⏰ Denetim: ", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.bold)),
-                            Text("Her gün saat 12:00'de bot ile otomatik", style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
+                            Text("Gündüz 2 Saatte Bir (10:00 - 22:00)", style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ],
@@ -598,7 +647,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
             ),
             const SizedBox(height: 10),
             const Text(
-              "İstediğiniz kamu kurumu, jandarma, polis veya üniversite duyuru sayfasını ekleyin veya RadarAI'ya 'Bana uzman erbaş için alarm kur' deyin. Sistemimiz sayfayı her gün saat 12:00'de otomatik denetleyip yeni duyuruda anında bildirim gönderir.",
+              "İstediğiniz kamu kurumu, jandarma, polis veya üniversite duyuru sayfasını ekleyin veya RadarAI'ya 'Bana uzman erbaş için alarm kur' deyin. Sistemimiz sayfayı gündüz saatlerinde (10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00) 2 saatte bir denetler, gece sessiz kalır.",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8), height: 1.5),
             ),
@@ -725,7 +774,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  "Sunucu botumuz eklediğiniz adresi her gün 12:00'de kontrol eder.",
+                  "Sunucu botumuz eklediğiniz adresi gündüz saatlerinde (10:00 - 22:00) 2 saatte bir kontrol eder.",
                   style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                 ),
                 const SizedBox(height: 12),
@@ -788,7 +837,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                     ),
                     onPressed: () => _addWatcher(_labelController.text, _urlController.text),
                     child: const Text(
-                      "Manuel Takibe Al (12:00 Kontrolü)",
+                      "Manuel Takibe Al (Gündüz Taraması)",
                       style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
                     ),
                   ),
@@ -1079,7 +1128,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "Son Kontrol: ${w.lastChecked12pm ?? 'Bugün 12:00'}",
+                  "Son Kontrol: ${w.lastChecked12pm ?? 'Gündüz Taraması (10:00 - 22:00)'}",
                   style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
                 ),
               ],

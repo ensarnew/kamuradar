@@ -32,7 +32,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         backgroundColor: AppTheme.successGreen,
-        content: Text("🤖 12:00 Sunucu Botu başarıyla çalıştırıldı! Süresi biten ilanlar temizlendi, yeni takvimler eşitlendi."),
+        content: Text("🤖 Gündüz Sunucu Botu başarıyla çalıştırıldı! (10:00-22:00 periyodu) Süresi biten ilanlar temizlendi, yeni takvimler eşitlendi."),
       ),
     );
   }
@@ -173,8 +173,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _buildMetricCard(
-                    "12:00 Botu",
-                    "Aktif (Her Gün)",
+                    "Gündüz Botu",
+                    "10:00 - 22:00",
                     Icons.alarm_on,
                     Colors.indigo,
                     isSmallText: true,
@@ -185,7 +185,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
             const SizedBox(height: 20),
 
-            // 2. 12:00 Botunu Manuel Tetikle Butonu
+            // 2. Gündüz Botunu Manuel Tetikle Butonu
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -208,7 +208,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    "Saat 12:00 botunu beklemeden şimdi çalıştırır. Resmî kaynakları (ÖSYM, Polis, Jandarma) tarar ve başvuru tarihi geçmiş olan tüm ilanları otomatik olarak siler.",
+                    "Gündüz botunu (10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00) beklemeden şimdi çalıştırır. Resmî kaynakları (ÖSYM, Polis, Jandarma) tarar ve başvuru tarihi geçmiş olan tüm ilanları otomatik olarak siler.",
                     style: TextStyle(fontSize: 11, color: Colors.black54),
                   ),
                   const SizedBox(height: 12),
@@ -226,7 +226,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber))
                           : const Icon(Icons.play_circle_fill, size: 18),
                       label: Text(
-                        _isBotRunning ? "Bot Taraması Yapılıyor..." : "12:00 Sunucu Botunu Şimdi Çalıştır",
+                        _isBotRunning ? "Bot Taraması Yapılıyor..." : "Gündüz Sunucu Botunu Şimdi Çalıştır",
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                       ),
                     ),

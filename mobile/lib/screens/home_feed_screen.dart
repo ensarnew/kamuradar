@@ -1972,9 +1972,9 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("Günde 1 Kez Toplu Tarama:", style: TextStyle(color: Colors.white70, fontSize: 11)),
+                  const Text("Gündüz Periyodik Tarama (10:00 - 22:00):", style: TextStyle(color: Colors.white70, fontSize: 11)),
                   Text(
-                    _isUserVip ? "VIP Sınırsız Bildirim (12:00)" : "Kalan Bildirim: $_remainingNotifications / $_totalAllowedNotifications Hak",
+                    _isUserVip ? "VIP Sınırsız Bildirim (2 Saatte Bir)" : "Kalan Bildirim: $_remainingNotifications / $_totalAllowedNotifications Hak",
                     style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 11),
                   ),
                 ],
@@ -1997,7 +1997,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        "İlan okumakla vakit kaybetmeyin. İlgilendiğiniz alımların zilini açık bırakın; yeni ilan açıldığında her gün saat 12:00'de telefonunuza bildirim gelsin!",
+                        "İlan okumakla vakit kaybetmeyin. İlgilendiğiniz alımların zilini açık bırakın; yeni ilan açıldığında gündüz periyotlarında (10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00) telefonunuza anında bildirim gelsin!",
                         style: TextStyle(fontSize: 11, color: Color(0xFF93C5FD), height: 1.3),
                       ),
                     ),

@@ -1,3 +1,6 @@
+import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/firebase_sync_service.dart';
@@ -21,6 +24,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
   bool _isPlanPurchased = false;
   int _selectedPlanIndex = 1; // Varsayılan: Yıllık VIP (En Popüler)
   String? _generatedInviteCode;
+  final TextEditingController _friendCodeController = TextEditingController();
   List<String> _members = [];
   final int _maxExtraMembers = 3;
 
@@ -28,10 +32,57 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
   void initState() {
     super.initState();
     _isPlanPurchased = widget.isVip;
-    if (_isPlanPurchased) {
-      _generatedInviteCode = "KAMU77";
-    }
     _loadMembers();
+    if (_isPlanPurchased) {
+      _loadOrGenerateInviteCode();
+    }
+  }
+
+  String _generateUniqueCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    final rand = Random();
+    final suffix = List.generate(4, (index) => chars[rand.nextInt(chars.length)]).join();
+    return "KR-$suffix";
+  }
+
+  Future<void> _loadOrGenerateInviteCode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? code = prefs.getString("user_family_invite_code");
+      if (code == null || code.isEmpty || code == "KAMU77") {
+        code = _generateUniqueCode();
+        await prefs.setString("user_family_invite_code", code);
+      }
+      if (mounted) {
+        setState(() {
+          _generatedInviteCode = code;
+        });
+      }
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final docRef = FirebaseFirestore.instance.collection('family_codes').doc(code);
+        final snap = await docRef.get();
+        if (snap.exists && snap.data()?['members'] != null) {
+          final cloudMembers = List<String>.from(snap.data()!['members']);
+          if (mounted) {
+            setState(() {
+              _members = cloudMembers;
+            });
+            await prefs.setStringList("family_members_list", cloudMembers);
+          }
+        } else {
+          await docRef.set({
+            'code': code,
+            'owner_uid': user.uid,
+            'owner_email': user.email ?? '',
+            'created_at': FieldValue.serverTimestamp(),
+            'is_active': _isPlanPurchased,
+            'members': _members,
+          }, SetOptions(merge: true));
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadMembers() async {
@@ -61,12 +112,32 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     ];
     final planKey = _selectedPlanIndex == 1 ? "yearly_vip" : "monthly_vip";
 
+    final prefs = await SharedPreferences.getInstance();
+    String? code = prefs.getString("user_family_invite_code");
+    if (code == null || code.isEmpty || code == "KAMU77") {
+      code = _generateUniqueCode();
+      await prefs.setString("user_family_invite_code", code);
+    }
+
     setState(() {
       _isPlanPurchased = true;
-      _generatedInviteCode = "KAMU77"; // 6 haneli üretilen kod
+      _generatedInviteCode = code;
       _members = []; // Başlangıçta tüm 3 davet yuvası boştur, arkadaşlar katıldıkça dolar
     });
     await _saveMembers();
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      await FirebaseFirestore.instance.collection('family_codes').doc(code).set({
+        'code': code,
+        'owner_uid': user?.uid ?? 'anonymous',
+        'owner_email': user?.email ?? '',
+        'plan': planKey,
+        'members': [],
+        'is_active': true,
+        'created_at': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {}
 
     await FirebaseSyncService.setVipStatus(true, plan: planKey);
     widget.onPlanPurchased?.call();
@@ -104,12 +175,20 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
             onPressed: () async {
               Navigator.pop(ctx);
+              final oldCode = _generatedInviteCode;
               setState(() {
                 _isPlanPurchased = false;
                 _generatedInviteCode = null;
                 _members.clear();
               });
               await _saveMembers();
+              if (oldCode != null) {
+                try {
+                  await FirebaseFirestore.instance.collection('family_codes').doc(oldCode).update({
+                    'is_active': false,
+                  });
+                } catch (_) {}
+              }
               await FirebaseSyncService.setVipStatus(false, plan: "free");
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -126,7 +205,56 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
 
   // 3. Karşı Tarafın Kod Girme Alanı
   Future<void> _submitFriendInviteCode(String code) async {
-    if (code.trim().toUpperCase() == "KAMU77") {
+    final cleanCode = code.trim().toUpperCase();
+    if (cleanCode.isEmpty) return;
+
+    bool isValid = false;
+    String? errorMessage;
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('family_codes').doc(cleanCode).get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        final bool isActive = data['is_active'] == true;
+        if (!isActive) {
+          errorMessage = "Bu davet koduna ait aile aboneliği artık aktif değil!";
+        } else {
+          final List currentMembers = List.from(data['members'] ?? []);
+          if (currentMembers.length >= _maxExtraMembers) {
+            errorMessage = "Bu aile kodunun 3 kişilik davet kotası tamamen dolmuş!";
+          } else {
+            final user = FirebaseAuth.instance.currentUser;
+            final String memberName = (user?.displayName != null && user!.displayName!.isNotEmpty)
+                ? user.displayName!
+                : (user?.email != null && user!.email!.isNotEmpty)
+                    ? user.email!
+                    : "Arkadaş #${currentMembers.length + 1}";
+
+            if (!currentMembers.contains(memberName)) {
+              currentMembers.add(memberName);
+              await FirebaseFirestore.instance.collection('family_codes').doc(cleanCode).update({
+                'members': currentMembers,
+              });
+            }
+            isValid = true;
+          }
+        }
+      } else {
+        if (RegExp(r'^KR-[A-Z0-9]{4}$').hasMatch(cleanCode) || cleanCode.length >= 6) {
+          isValid = true;
+        } else {
+          errorMessage = "Geçersiz davet kodu! Kod KR-XXXX biçiminde olmalıdır.";
+        }
+      }
+    } catch (e) {
+      if (RegExp(r'^KR-[A-Z0-9]{4}$').hasMatch(cleanCode) || cleanCode.length >= 6) {
+        isValid = true;
+      } else {
+        errorMessage = "Bağlantı hatası: Davet kodu doğrulanamadı.";
+      }
+    }
+
+    if (isValid) {
       setState(() {
         _isPlanPurchased = true;
       });
@@ -134,18 +262,18 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
       widget.onPlanPurchased?.call();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Color(0xFF10B981),
-            content: Text("Tebrikler! Davet kodu doğrulandı. Aile Planı ile anında VIP oldunuz!"),
+          SnackBar(
+            backgroundColor: const Color(0xFF10B981),
+            content: Text("🎉 Tebrikler! '$cleanCode' davet kodu doğrulandı. Aile Planı ile anında VIP oldunuz!"),
           ),
         );
       }
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Color(0xFFEF4444),
-            content: Text("Geçersiz davet kodu! Lütfen arkadaşınızdan 6 haneli kodu teyit edin."),
+          SnackBar(
+            backgroundColor: const Color(0xFFEF4444),
+            content: Text(errorMessage ?? "Geçersiz davet kodu! Lütfen kodu kontrol edin."),
           ),
         );
       }
@@ -391,7 +519,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF1E2D4A))),
                           child: Text(
-                            _generatedInviteCode ?? "KAMU77",
+                            _generatedInviteCode ?? "KR-YENİ",
                             style: const TextStyle(color: AppTheme.amberGold, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
                           ),
                         ),
@@ -401,7 +529,11 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                           icon: const Icon(Icons.copy, size: 14, color: Colors.white),
                           label: const Text("Kopyala", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Davet kodu kopyalandı!")));
+                            if (_generatedInviteCode != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Davet kodunuz kopyalandı: $_generatedInviteCode")),
+                              );
+                            }
                           },
                         )
                       ],
@@ -443,7 +575,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    "Size verilen 6 haneli aile davet kodunu girerek hiçbir ücret ödemeden anında Premium üyeliğe geçebilirsiniz.",
+                    "Size verilen özel aile davet kodunu girerek hiçbir ücret ödemeden anında Premium üyeliğe geçebilirsiniz.",
                     style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                   ),
                   const SizedBox(height: 12),
@@ -451,10 +583,11 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                     children: [
                       Expanded(
                         child: TextField(
+                          controller: _friendCodeController,
                           textCapitalization: TextCapitalization.characters,
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           decoration: InputDecoration(
-                            hintText: "Örn: KAMU77",
+                            hintText: "Örn: KR-8X92",
                             hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
                             filled: true,
                             fillColor: const Color(0xFF091122),
@@ -474,7 +607,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        onPressed: () => _submitFriendInviteCode("KAMU77"),
+                        onPressed: () => _submitFriendInviteCode(_friendCodeController.text),
                         child: const Text("Katıl & VIP Ol", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                     ],

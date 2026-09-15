@@ -572,12 +572,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 12:00 Toplu Tarama
+          // Gündüz Otomatik Tarama (10:00 - 22:00)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text("Günde 1 Kez Toplu Bildirim (Saat 12:00)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
-            subtitle: const Text("Gereksiz bildirim kirliliği olmaz, her gün 12:00'de toplu özet gelir.", style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+            title: const Text("Gündüz Otomatik Tarama (10:00 - 22:00)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
+            subtitle: const Text("10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00 saatlerinde 2 saatte bir taranır. Gece sessizdir.", style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
             value: _dailyScanNotification,
             activeThumbColor: AppTheme.primaryBlue,
             onChanged: (v) => setState(() => _dailyScanNotification = v),
