@@ -83,6 +83,117 @@ class ChannelAlarm {
     this.kpssStatus = "KPSS'li",
     this.examDate,
   }) : position = position ?? title;
+
+  static DateTime? parseTurkishDate(String raw) {
+    if (raw.trim().isEmpty) return null;
+    try {
+      final clean = raw.trim();
+      if (clean.contains('.')) {
+        final parts = clean.split('.');
+        if (parts.length == 3) {
+          final day = int.parse(parts[0].trim());
+          final month = int.parse(parts[1].trim());
+          final year = int.parse(parts[2].trim());
+          return DateTime(year, month, day);
+        }
+      } else if (clean.contains('/')) {
+        final parts = clean.split('/');
+        if (parts.length == 3) {
+          final day = int.parse(parts[0].trim());
+          final month = int.parse(parts[1].trim());
+          final year = int.parse(parts[2].trim());
+          return DateTime(year, month, day);
+        }
+      } else if (clean.contains('-')) {
+        final parts = clean.split('-');
+        if (parts.length == 3) {
+          final year = int.parse(parts[0].trim());
+          final month = int.parse(parts[1].trim());
+          final day = int.parse(parts[2].trim());
+          return DateTime(year, month, day);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static String calculateStatus({
+    required String startDateStr,
+    required String deadlineDateStr,
+    DateTime? referenceDate,
+    String defaultStatus = "Açık",
+  }) {
+    if (defaultStatus == "Sonuç") return "Sonuç";
+
+    final ref = referenceDate ?? DateTime.now();
+    final today = DateTime(ref.year, ref.month, ref.day);
+
+    final DateTime? deadline = parseTurkishDate(deadlineDateStr);
+    final DateTime? startDate = parseTurkishDate(startDateStr);
+
+    // 1. Son başvuru tarihi referans gününden önceyse -> Bitti / Kapalı
+    if (deadline != null && today.isAfter(deadline)) {
+      return "Kapalı";
+    }
+
+    // 2. Başvuru başlangıç tarihi referans gününden sonraysa -> Henüz başlamadı / Yakında
+    if (startDate != null && today.isBefore(startDate)) {
+      return "Yakında";
+    }
+
+    // 3. Başlangıç ile bitiş arasındaysa veya aynı günse -> Açık
+    return "Açık";
+  }
+
+  ChannelAlarm copyWith({
+    String? id,
+    String? organization,
+    String? title,
+    String? position,
+    String? city,
+    String? date,
+    String? quota,
+    String? deadline,
+    String? applicationPlace,
+    String? employmentType,
+    String? applicationType,
+    List<String>? requirements,
+    String? status,
+    String? description,
+    String? officialUrl,
+    IconData? logoIcon,
+    bool? isAlarmActive,
+    String? contentType,
+    String? category,
+    String? educationLevel,
+    String? kpssStatus,
+    String? examDate,
+  }) {
+    return ChannelAlarm(
+      id: id ?? this.id,
+      organization: organization ?? this.organization,
+      title: title ?? this.title,
+      position: position ?? this.position,
+      city: city ?? this.city,
+      date: date ?? this.date,
+      quota: quota ?? this.quota,
+      deadline: deadline ?? this.deadline,
+      applicationPlace: applicationPlace ?? this.applicationPlace,
+      employmentType: employmentType ?? this.employmentType,
+      applicationType: applicationType ?? this.applicationType,
+      requirements: requirements ?? this.requirements,
+      status: status ?? this.status,
+      description: description ?? this.description,
+      officialUrl: officialUrl ?? this.officialUrl,
+      logoIcon: logoIcon ?? this.logoIcon,
+      isAlarmActive: isAlarmActive ?? this.isAlarmActive,
+      contentType: contentType ?? this.contentType,
+      category: category ?? this.category,
+      educationLevel: educationLevel ?? this.educationLevel,
+      kpssStatus: kpssStatus ?? this.kpssStatus,
+      examDate: examDate ?? this.examDate,
+    );
+  }
 }
 
 class HomeFeedScreen extends StatefulWidget {
@@ -327,6 +438,22 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       final activeIds = await CacheService.getActiveAlarms();
       final bonus = await CacheService.getBonusNotifications();
       final used = await CacheService.getUsedNotifications();
+
+      // Tarihe göre ilan durumlarını sınıflandır (Bitenler Kapalı, Başlamayanlar Yakında, Açık olanlar Açık)
+      final now = DateTime.now();
+      for (int i = 0; i < _channels.length; i++) {
+        final current = _channels[i];
+        final evaluated = ChannelAlarm.calculateStatus(
+          startDateStr: current.date,
+          deadlineDateStr: current.deadline,
+          referenceDate: now,
+          defaultStatus: current.status,
+        );
+        if (evaluated != current.status) {
+          _channels[i] = current.copyWith(status: evaluated);
+        }
+      }
+
       if (mounted) {
         setState(() {
           _bonusNotifications = bonus;
@@ -3171,6 +3298,14 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   String _selectedCategory = "Tümü";
   String _selectedKpss = "Tümü";
   String _selectedEducation = "Tümü";
+  String _selectedStatus = "Tümü"; // "Tümü", "Açık", "Yakında", "Kapalı"
+
+  static const List<String> kAllStatuses = [
+    "Tümü",
+    "Açık",
+    "Yakında",
+    "Kapalı",
+  ];
 
   static const List<String> kAllCategories = [
     "Tümü",
@@ -3202,6 +3337,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   int get _sinavCount => _channels.where((c) => c.contentType == "SINAV").length;
   int get _sonucMulakatCount => _channels.where((c) => c.contentType == "MULAKAT" || c.contentType == "SONUC").length;
 
+  int get _openCount => _channels.where((c) => c.status == "Açık").length;
+  int get _upcomingCount => _channels.where((c) => c.status == "Yakında").length;
+  int get _closedCount => _channels.where((c) => c.status == "Kapalı").length;
+
   List<ChannelAlarm> get _filteredChannels {
     return _channels.where((c) {
       if (_selectedTabIndex == 0 && c.contentType != "ILAN") return false;
@@ -3210,6 +3349,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       if (_selectedCategory != "Tümü" && c.category != _selectedCategory) return false;
       if (_selectedKpss != "Tümü" && c.kpssStatus != _selectedKpss) return false;
       if (_selectedEducation != "Tümü" && c.educationLevel != _selectedEducation) return false;
+      if (_selectedStatus != "Tümü" && c.status != _selectedStatus) return false;
       return true;
     }).toList();
   }
@@ -3271,6 +3411,37 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     );
   }
 
+  Widget _buildStatusQuickChip(String statusKey, String label, Color activeColor) {
+    final isSel = _selectedStatus == statusKey;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedStatus = statusKey;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSel ? activeColor.withValues(alpha: 0.25) : const Color(0xFF131E33),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSel ? activeColor : const Color(0xFF1E2D4A),
+            width: isSel ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+            color: isSel ? Colors.white : Colors.white60,
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showFilterModal() {
     showModalBottomSheet(
       context: context,
@@ -3303,6 +3474,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                           _selectedCategory = "Tümü";
                           _selectedKpss = "Tümü";
                           _selectedEducation = "Tümü";
+                          _selectedStatus = "Tümü";
                         });
                         setModalState(() {});
                       },
@@ -3368,6 +3540,32 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                         setModalState(() {});
                       },
                       selectedColor: const Color(0xFF10B981),
+                      backgroundColor: const Color(0xFF1E293B),
+                      labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+                const Text("Başvuru Durumu (Tarihe Göre)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: kAllStatuses.map((s) {
+                    final sel = _selectedStatus == s;
+                    Color chipColor = const Color(0xFF22C55E);
+                    if (s == "Yakında") chipColor = const Color(0xFF3B82F6);
+                    if (s == "Kapalı") chipColor = const Color(0xFF64748B);
+                    if (s == "Tümü") chipColor = AppTheme.primaryBlue;
+
+                    return ChoiceChip(
+                      label: Text(s == "Kapalı" ? "Bitenler (Kapalı)" : (s == "Yakında" ? "Yakında Başlayacaklar" : (s == "Açık" ? "Açık İlanlar" : "Tümü"))),
+                      selected: sel,
+                      onSelected: (v) {
+                        setState(() => _selectedStatus = s);
+                        setModalState(() {});
+                      },
+                      selectedColor: chipColor,
                       backgroundColor: const Color(0xFF1E293B),
                       labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
                     );
@@ -4065,6 +4263,26 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Başvuru Durumuna Göre Hızlı Filtre Butonları (Açık, Yakında, Bitenler)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildStatusQuickChip("Tümü", "Tümü (${_channels.length})", AppTheme.primaryBlue),
+                    const SizedBox(width: 6),
+                    _buildStatusQuickChip("Açık", "🟢 Açık ($_openCount)", const Color(0xFF22C55E)),
+                    const SizedBox(width: 6),
+                    _buildStatusQuickChip("Yakında", "🔵 Yakında ($_upcomingCount)", const Color(0xFF3B82F6)),
+                    const SizedBox(width: 6),
+                    _buildStatusQuickChip("Kapalı", "⚪ Bitenler ($_closedCount)", const Color(0xFF64748B)),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),

@@ -27,6 +27,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearchingUsers = false;
 
+  // Tarihe Göre Tarama Kontrolleri (Örn: 10.09.2026)
+  final TextEditingController _scanDateController = TextEditingController();
+  int _scannedOpenCount = 0;
+  int _scannedUpcomingCount = 0;
+  int _scannedClosedCount = 0;
+
   bool _isBotRunning = false;
   bool _isSyncingAnnouncements = false;
   int _activeListingCount = 118;
@@ -75,6 +81,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _scanDateController.text = "${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}";
     _loadInitialUsers();
   }
 
@@ -87,12 +95,38 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     }
   }
 
-  // 150+ İlanı Tara & Firebase Firestore'a Eşitle (Gelecekteki İlanlar Dahil)
+  // 150+ İlanı Referans Tarihe Göre Tara, Sınıflandır & Firebase Firestore'a Eşitle
   Future<void> _syncAllAnnouncementsToFirestore() async {
     setState(() => _isSyncingAnnouncements = true);
     try {
+      final refDateStr = _scanDateController.text.trim();
+      final DateTime refDate = ChannelAlarm.parseTurkishDate(refDateStr) ?? DateTime.now();
+
       final catalog = HomeFeedScreen.catalog;
+      int open = 0;
+      int upcoming = 0;
+      int closed = 0;
+
       final List<Map<String, dynamic>> items = catalog.map((ch) {
+        // İlan durumunu referans tarihe göre kesin olarak sınıflandır:
+        // 1. Son başvuru geçmişse -> Kapalı (Biten İlanlar)
+        // 2. Başvuru henüz başlamamışsa -> Yakında (Gelecekte Açılacak)
+        // 3. Başlangıç ile bitiş arasındaysa -> Açık (Aktif Başvuru)
+        final computedStatus = ChannelAlarm.calculateStatus(
+          startDateStr: ch.date,
+          deadlineDateStr: ch.deadline,
+          referenceDate: refDate,
+          defaultStatus: ch.status,
+        );
+
+        if (computedStatus == "Açık") {
+          open++;
+        } else if (computedStatus == "Yakında") {
+          upcoming++;
+        } else if (computedStatus == "Kapalı") {
+          closed++;
+        }
+
         return {
           'id': ch.id,
           'organization': ch.organization,
@@ -105,7 +139,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           'application_place': ch.applicationPlace,
           'employment_type': ch.employmentType,
           'application_type': ch.applicationType,
-          'status': ch.status,
+          'status': computedStatus,
           'category': ch.category,
           'education_level': ch.educationLevel,
           'kpss_status': ch.kpssStatus,
@@ -114,7 +148,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           'description': ch.description,
           'official_url': ch.officialUrl,
           'content_type': ch.contentType,
-          'is_future': ch.status == "Yakında" || (ch.examDate != null && ch.examDate!.isNotEmpty),
+          'is_future': computedStatus == "Yakında",
+          'is_closed': computedStatus == "Kapalı",
+          'scanned_reference_date': refDateStr,
         };
       }).toList();
 
@@ -122,20 +158,23 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       setState(() {
         _isSyncingAnnouncements = false;
         _activeListingCount = count;
+        _scannedOpenCount = open;
+        _scannedUpcomingCount = upcoming;
+        _scannedClosedCount = closed;
       });
 
-      // Canlı bildirim de fırlat (Tüm kullanıcılar görsün)
+      // Canlı bildirim de fırlat (Tüm kullanıcılar ve veritabanı görsün)
       await FirebaseSyncService.publishBroadcastNotification(
-        title: "🚀 Radarda $count Kamu İlanı Güncellendi!",
-        body: "Tüm bakanlıklar, KPSS ve memur alım takvimleri Firebase veritabanına eşitlendi.",
+        title: "🚀 $refDateStr Tarihli İlan Taraması!",
+        body: "Günün tarihine göre radarda $open Açık İlan, $upcoming Yakında Başlayacak İlan yayında ($closed ilanın süresi doldu).",
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppTheme.successGreen,
-            duration: const Duration(seconds: 4),
-            content: Text("✅ $count adet ilan başarıyla tarandı ve Firebase Firestore'a eşitlendi!"),
+            duration: const Duration(seconds: 5),
+            content: Text("✅ $count adet ilan eşitlendi!\n🟢 $open Açık İlan  |  🔵 $upcoming Yakında  |  ⚪ $closed Biten İlan"),
           ),
         );
       }
@@ -391,15 +430,86 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     children: [
                       Icon(Icons.rocket_launch, color: Colors.amber, size: 22),
                       SizedBox(width: 8),
-                      Text("Tüm İlanları Tara & Firebase'e Eşitle", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                      Text("Tarihe Göre İlanları Tara & Firebase'e Eşitle", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
                     ],
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    "Botumuz aracılığıyla mevcut ve gelecekte açılacak olan 150+ kamu ilanını tek tıkla tarar, eksiksiz olarak Firebase Firestore veritabanına yükler ve tüm kullanıcılara canlı bildirim fırlatır.",
+                    "Mevcut ve gelecekte açılacak olan 150+ kamu ilanını girdiğiniz referans tarihe göre analiz eder; açık, yakında ve biten ilanları otomatik sınıflandırıp Firebase'e yazar.",
                     style: TextStyle(fontSize: 11, color: Colors.black54, height: 1.4),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
+
+                  // Tarih Seçici / Giriş Alanı
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Tarama Referans Tarihi (GG.AA.YYYY):",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF0F172A)),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _scanDateController,
+                                decoration: InputDecoration(
+                                  hintText: "10.09.2026",
+                                  isDense: true,
+                                  prefixIcon: const Icon(Icons.calendar_today, size: 16, color: AppTheme.primaryBlue),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () {
+                                final now = DateTime.now();
+                                setState(() {
+                                  _scanDateController.text = "${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}";
+                                });
+                              },
+                              child: const Text("Bugün", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 4),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _scanDateController.text = "10.09.2026";
+                                });
+                              },
+                              child: const Text("10.09.2026", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "📌 Girilen tarihe göre: Başvurusu henüz başlamamış ilanlar 'Yakında' durumuna geçer, son başvuru tarihi geçmiş olanlar 'Kapalı (Bitenler)' listesine aktarılır, süresi devam edenler ise 'Açık' ilan olarak sisteme kaydedilir.",
+                          style: TextStyle(fontSize: 10, color: Colors.black54, height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     height: 48,
@@ -414,11 +524,30 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber))
                           : const Icon(Icons.cloud_upload, size: 20),
                       label: Text(
-                        _isSyncingAnnouncements ? "150+ İlan Taranıyor & Firebase'e Yazılıyor..." : "🚀 150+ İlanı Şimdi Tara & Firebase'e Eşitle",
+                        _isSyncingAnnouncements ? "İlanlar Sınıflandırılıyor & Firebase'e Yazılıyor..." : "🚀 Tarihe Göre Tara & Firebase'e Eşitle",
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ),
                   ),
+
+                  if (_scannedOpenCount > 0 || _scannedUpcomingCount > 0 || _scannedClosedCount > 0) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Text("🟢 Açık: $_scannedOpenCount", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.green)),
+                          Text("🔵 Yakında: $_scannedUpcomingCount", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.blue)),
+                          Text("⚪ Bitenler: $_scannedClosedCount", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.blueGrey)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
