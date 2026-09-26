@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'cache_service.dart';
+import 'notification_service.dart';
 
 class FirebaseSyncService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -218,5 +219,124 @@ class FirebaseSyncService {
   static Future<void> setGuestMode(bool isGuest) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyIsGuest, isGuest);
+  }
+
+  // 7. Tüm Kullanıcılara Canlı Bildirim Yayınla (Firestore ve FCM Kanallarına)
+  static Future<void> publishBroadcastNotification({
+    required String title,
+    required String body,
+    String? targetUrl,
+    String topic = "kamuradar_all",
+  }) async {
+    try {
+      // A. Firestore 'notifications' koleksiyonuna ekle (Bütün cihazların canlı listener'ı anında yakalar)
+      await _firestore.collection('notifications').add({
+        'title': title,
+        'body': body,
+        'url': targetUrl ?? '',
+        'topic': topic,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+
+      // B. Yönetici cihazında da göster
+      await NotificationService.showLocalNotification(
+        title: title,
+        body: body,
+      );
+
+      if (kDebugMode) {
+        print("📢 Bildirim yayınlandı: $title - $body ($topic)");
+      }
+    } catch (e) {
+      if (kDebugMode) print("Bildirim yayınlama hatası: $e");
+    }
+  }
+
+  // 8. İlanları Toplu Olarak Firestore 'announcements' Koleksiyonuna Eşitle
+  static Future<int> uploadAnnouncementsBatch(List<Map<String, dynamic>> items) async {
+    try {
+      int saved = 0;
+      WriteBatch batch = _firestore.batch();
+      for (var item in items) {
+        final id = (item['id'] ?? 'ann_${saved + 1}').toString();
+        final docRef = _firestore.collection('announcements').doc(id);
+        batch.set(docRef, {
+          ...item,
+          'synced_at': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        saved++;
+        if (saved % 400 == 0) {
+          await batch.commit();
+          batch = _firestore.batch();
+        }
+      }
+      await batch.commit();
+      return saved;
+    } catch (e) {
+      if (kDebugMode) print("Toplu ilan yükleme hatası: $e");
+      return 0;
+    }
+  }
+
+  // 9. Firestore'dan Canlı İlanları Getir / Dinle
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getAnnouncementsStream() {
+    return _firestore.collection('announcements').snapshots();
+  }
+
+  // 10. Kullanıcı Ara (Kullanıcı Adı veya E-posta İle)
+  static Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    try {
+      final cleanQuery = query.trim().toLowerCase();
+      // Tüm son kullanıcıları getirip filtreleyelim (büyük/küçük harf duyarsız arama)
+      final snap = await _firestore.collection('users').limit(60).get();
+      if (snap.docs.isEmpty) return [];
+
+      final results = <Map<String, dynamic>>[];
+      for (var doc in snap.docs) {
+        final data = doc.data();
+        final email = (data['email'] ?? '').toString().toLowerCase();
+        final name = (data['display_name'] ?? '').toString().toLowerCase();
+        final uid = doc.id.toLowerCase();
+
+        if (cleanQuery.isEmpty || email.contains(cleanQuery) || name.contains(cleanQuery) || uid.contains(cleanQuery)) {
+          results.add({
+            'uid': doc.id,
+            'email': data['email'] ?? 'E-posta Yok',
+            'display_name': data['display_name'] ?? 'İsimsiz Üye',
+            'is_vip': data['is_vip'] == true,
+            'vip_plan': data['vip_plan'] ?? 'free',
+            'last_active': data['last_active'],
+          });
+        }
+      }
+      return results;
+    } catch (e) {
+      if (kDebugMode) print("Kullanıcı arama hatası: $e");
+      return [];
+    }
+  }
+
+  // 11. Admin Tarafından Kullanıcıya VIP Ver veya Kaldır
+  static Future<bool> setUserVipByAdmin(String uid, bool isVip, {String plan = "vip_family_plan"}) async {
+    try {
+      await _firestore.collection('users').doc(uid).set({
+        'is_vip': isVip,
+        'vip_plan': isVip ? plan : 'free',
+        'vip_updated_at': FieldValue.serverTimestamp(),
+        'vip_granted_by_admin': true,
+      }, SetOptions(merge: true));
+
+      // Eğer mevcut kullanıcıysa yerel hafızayı da güncelle
+      if (_auth.currentUser?.uid == uid) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_keyIsVip, isVip);
+        await prefs.setString(_keyVipPlan, isVip ? plan : 'free');
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) print("Admin VIP güncelleme hatası: $e");
+      return false;
+    }
   }
 }

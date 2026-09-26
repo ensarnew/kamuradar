@@ -5,7 +5,11 @@ import 'firebase_sync_service.dart';
 
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
-  static final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // Firebase Web Client ID (Google Auth için zorunlu)
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: "23507411940-2g0ek9pinfl8bpdg0bssr454k5blk8fh.apps.googleusercontent.com",
+    scopes: ['email', 'profile'],
+  );
 
   // Mevcut giriş yapmış kullanıcı
   static User? get currentUser => _auth.currentUser;
@@ -16,23 +20,33 @@ class AuthService {
   // Google ile Giriş Yap Fonksiyonu
   static Future<User?> signInWithGoogle() async {
     try {
-      // 1. Google Hesap Seçim Ekranını Başlat
+      // 1. Önceki oturum kalıntısı varsa temizle
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+
+      // 2. Google Hesap Seçim Ekranını Başlat
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        // Kullanıcı seçmeden kapattı
+        // Kullanıcı pencereyi kapattı veya seçim yapmadı
+        if (kDebugMode) print("ℹ️ Google hesabı seçilmeden kapatıldı.");
         return null;
       }
 
-      // 2. Kimlik doğrulama detaylarını al (Access Token & ID Token)
+      // 3. Kimlik doğrulama detaylarını al (Access Token & ID Token)
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // 3. Firebase Kimlik Kartı (Credential) oluştur
+      if (googleAuth.idToken == null && googleAuth.accessToken == null) {
+        throw Exception("Google kimlik belirteci (token) alınamadı. SHA-1 parmak izini kontrol edin.");
+      }
+
+      // 4. Firebase Kimlik Kartı (Credential) oluştur
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // 4. Firebase'e giriş yap
+      // 5. Firebase'e giriş yap
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
 

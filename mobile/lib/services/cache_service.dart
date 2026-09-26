@@ -91,7 +91,19 @@ class CacheService {
   static Future<int> getUsedNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getInt(_keyUsedNotifications) ?? 1; // Başlangıçta 1 bildirim örnek kullanılmış
+      return prefs.getInt(_keyUsedNotifications) ?? 0; // Yeni kullanıcı 0 harcanmış, 3/3 hak ile başlar
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  static Future<int> incrementUsedNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final current = prefs.getInt(_keyUsedNotifications) ?? 0;
+      final updated = current + 1;
+      await prefs.setInt(_keyUsedNotifications, updated);
+      return updated;
     } catch (_) {
       return 1;
     }

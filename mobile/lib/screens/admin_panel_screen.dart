@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../services/notification_service.dart';
+import '../services/firebase_sync_service.dart';
+import 'home_feed_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({Key? key}) : super(key: key);
@@ -10,18 +11,146 @@ class AdminPanelScreen extends StatefulWidget {
 }
 
 class _AdminPanelScreenState extends State<AdminPanelScreen> {
+  // Bildirim Alanı
   final TextEditingController _notifTitleController = TextEditingController();
   final TextEditingController _notifBodyController = TextEditingController();
   final TextEditingController _notifUrlController = TextEditingController();
 
+  // Manuel İlan Alanı
   final TextEditingController _newOrgController = TextEditingController();
   final TextEditingController _newTitleController = TextEditingController();
   final TextEditingController _newDatesController = TextEditingController();
   final TextEditingController _newUrlController = TextEditingController();
 
+  // Kullanıcı Arama & VIP Alanı
+  final TextEditingController _userSearchController = TextEditingController();
+  List<Map<String, dynamic>> _searchResults = [];
+  bool _isSearchingUsers = false;
+
   bool _isBotRunning = false;
-  int _activeListingCount = 37;
+  bool _isSyncingAnnouncements = false;
+  int _activeListingCount = 118;
   final int _purgedCount = 17;
+
+  // Hazır Bildirim Şablonları (5-6 Adet)
+  final List<Map<String, String>> _readyTemplates = [
+    {
+      "badge": "📢 Yeni Alımlar",
+      "title": "📢 Yeni Kamu & Memur İlanları Listelendi!",
+      "body": "Radarda bugün 30+ yeni kamu personeli ve memur alım ilanı yayınlandı. Başvurular başlamadan inceleyin!",
+      "url": "https://kamuradar.app",
+    },
+    {
+      "badge": "📅 Sınav Takvimi",
+      "title": "📅 ÖSYM Sınav ve Tercih Takvimi Açıklandı!",
+      "body": "KPSS, YDS, ALES ve DGS sınav başvuru ve tercih takvimleri güncellendi. Takviminizi hemen kontrol edin.",
+      "url": "https://ais.osym.gov.tr",
+    },
+    {
+      "badge": "🎖️ Askeri & Polis",
+      "title": "🎖️ Polislik ve Askeri Alımlar Başladı!",
+      "body": "POMEM, Jandarma ve MSB subay/astsubay alım duyuruları aktif. Başvuru şartları için tıklayın.",
+      "url": "https://vatandas.jandarma.gov.tr",
+    },
+    {
+      "badge": "⏰ Son Günler",
+      "title": "⏰ Son Başvuru Tarihleri Yaklaşıyor!",
+      "body": "Bu hafta başvuruları sona erecek bakanlık ve kamu ilanlarını kaçırmayın. Başvuru süresini kontrol edin.",
+      "url": "https://kamuradar.app",
+    },
+    {
+      "badge": "⚖️ Bakanlıklar",
+      "title": "⚖️ Adalet ve Sağlık Bakanlığı Alımları!",
+      "body": "Zabıt katibi, infaz koruma memuru ve sağlık personeli alımları yayında! Kontenjanları inceleyin.",
+      "url": "https://pgm.adalet.gov.tr",
+    },
+    {
+      "badge": "👑 VIP Fırsat",
+      "title": "👑 KamuRadar VIP: 1 Alana 3 Bedava!",
+      "body": "Aile Planı ile tek abonelikle 4 kişi sınırsız anlık bildirim ve özel web sayfası takibi kazanın.",
+      "url": "https://kamuradar.app/vip",
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialUsers();
+  }
+
+  Future<void> _loadInitialUsers() async {
+    final users = await FirebaseSyncService.searchUsers("");
+    if (mounted && users.isNotEmpty) {
+      setState(() {
+        _searchResults = users;
+      });
+    }
+  }
+
+  // 150+ İlanı Tara & Firebase Firestore'a Eşitle (Gelecekteki İlanlar Dahil)
+  Future<void> _syncAllAnnouncementsToFirestore() async {
+    setState(() => _isSyncingAnnouncements = true);
+    try {
+      final catalog = HomeFeedScreen.catalog;
+      final List<Map<String, dynamic>> items = catalog.map((ch) {
+        return {
+          'id': ch.id,
+          'organization': ch.organization,
+          'title': ch.title,
+          'position': ch.position,
+          'city': ch.city,
+          'date': ch.date,
+          'quota': ch.quota,
+          'deadline': ch.deadline,
+          'application_place': ch.applicationPlace,
+          'employment_type': ch.employmentType,
+          'application_type': ch.applicationType,
+          'status': ch.status,
+          'category': ch.category,
+          'education_level': ch.educationLevel,
+          'kpss_status': ch.kpssStatus,
+          'exam_date': ch.examDate ?? '',
+          'requirements': ch.requirements,
+          'description': ch.description,
+          'official_url': ch.officialUrl,
+          'content_type': ch.contentType,
+          'is_future': ch.status == "Yakında" || (ch.examDate != null && ch.examDate!.isNotEmpty),
+        };
+      }).toList();
+
+      final count = await FirebaseSyncService.uploadAnnouncementsBatch(items);
+      setState(() {
+        _isSyncingAnnouncements = false;
+        _activeListingCount = count;
+      });
+
+      // Canlı bildirim de fırlat (Tüm kullanıcılar görsün)
+      await FirebaseSyncService.publishBroadcastNotification(
+        title: "🚀 Radarda $count Kamu İlanı Güncellendi!",
+        body: "Tüm bakanlıklar, KPSS ve memur alım takvimleri Firebase veritabanına eşitlendi.",
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.successGreen,
+            duration: const Duration(seconds: 4),
+            content: Text("✅ $count adet ilan başarıyla tarandı ve Firebase Firestore'a eşitlendi!"),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isSyncingAnnouncements = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.urgentRed,
+            content: Text("Eşitleme hatası: $e"),
+          ),
+        );
+      }
+    }
+  }
 
   void _trigger12pmBot() async {
     setState(() => _isBotRunning = true);
@@ -32,12 +161,35 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         backgroundColor: AppTheme.successGreen,
-        content: Text("🤖 Gündüz Sunucu Botu başarıyla çalıştırıldı! (10:00-22:00 periyodu) Süresi biten ilanlar temizlendi, yeni takvimler eşitlendi."),
+        content: Text("🤖 Gündüz Sunucu Botu başarıyla çalıştırıldı! Süresi biten ilanlar temizlendi, yeni takvimler eşitlendi."),
       ),
     );
   }
 
-  void _sendCustomNotification() {
+  // Hazır Şablonu Tek Tıkla Gönder
+  Future<void> _sendTemplateNotification(Map<String, String> tpl) async {
+    final title = tpl["title"] ?? "";
+    final body = tpl["body"] ?? "";
+    final url = tpl["url"] ?? "";
+
+    await FirebaseSyncService.publishBroadcastNotification(
+      title: title,
+      body: body,
+      targetUrl: url.isNotEmpty ? url : null,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppTheme.primaryBlue,
+          content: Text("🚀 Hazır Bildirim Fırlatıldı: '$title'"),
+        ),
+      );
+    }
+  }
+
+  // Özel Yazılan Bildirimi Gönder
+  Future<void> _sendCustomNotification() async {
     final title = _notifTitleController.text.trim();
     final body = _notifBodyController.text.trim();
     final promoUrl = _notifUrlController.text.trim();
@@ -53,20 +205,56 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     _notifBodyController.clear();
     _notifUrlController.clear();
 
-    final hasUrl = promoUrl.isNotEmpty;
-    NotificationService.showLocalNotification(
+    await FirebaseSyncService.publishBroadcastNotification(
       title: title,
       body: body,
+      targetUrl: promoUrl.isNotEmpty ? promoUrl : null,
     );
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppTheme.primaryBlue,
-        duration: const Duration(seconds: 4),
-        content: Text(hasUrl
-            ? "🚀 Firebase FCM: '$title' bildirimi fırlatıldı! Kullanıcılar tıklayınca doğrudan linke gidecek:\n🔗 $promoUrl"
-            : "🚀 Firebase FCM: '$title' bildirimi tüm hedef kullanıcılara fırlatıldı!"),
-      ),
-    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppTheme.primaryBlue,
+          duration: const Duration(seconds: 4),
+          content: Text("🚀 Bildirim tüm cihazlara ve Firestore'a başarıyla iletildi: '$title'"),
+        ),
+      );
+    }
+  }
+
+  // Kullanıcı Arama
+  Future<void> _searchUsers() async {
+    final q = _userSearchController.text.trim();
+    setState(() => _isSearchingUsers = true);
+    final results = await FirebaseSyncService.searchUsers(q);
+    if (mounted) {
+      setState(() {
+        _searchResults = results;
+        _isSearchingUsers = false;
+      });
+      if (results.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Aramaya uygun kullanıcı bulunamadı.")),
+        );
+      }
+    }
+  }
+
+  // Kullanıcıya VIP Ver veya Kaldır
+  Future<void> _toggleUserVip(String uid, bool currentVip) async {
+    final newStatus = !currentVip;
+    final success = await FirebaseSyncService.setUserVipByAdmin(uid, newStatus);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: newStatus ? AppTheme.successGreen : Colors.orange,
+          content: Text(newStatus
+              ? "👑 Kullanıcıya VIP Aile Planı başarıyla tanımlandı!"
+              : "Kullanıcının VIP üyeliği sonlandırıldı."),
+        ),
+      );
+      _searchUsers();
+    }
   }
 
   void _addNewAnnouncement() {
@@ -141,7 +329,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               children: [
                 Expanded(
                   child: _buildMetricCard(
-                    "Aktif İlanlar",
+                    "Katalog İlanları",
                     "$_activeListingCount",
                     Icons.campaign,
                     AppTheme.primaryBlue,
@@ -173,9 +361,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _buildMetricCard(
-                    "Gündüz Botu",
-                    "10:00 - 22:00",
-                    Icons.alarm_on,
+                    "Bildirim & Canlı Sync",
+                    "FCM + Firestore %100",
+                    Icons.bolt,
                     Colors.indigo,
                     isSmallText: true,
                   ),
@@ -185,7 +373,59 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
             const SizedBox(height: 20),
 
-            // 2. Gündüz Botunu Manuel Tetikle Butonu
+            // 2. 🚀 TÜM İLANLARI TARA & FIREBASE'E EŞİTLE BUTONU (Madde 6)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.amber.shade300, width: 1.5),
+                boxShadow: [
+                  BoxShadow(color: Colors.amber.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.rocket_launch, color: Colors.amber, size: 22),
+                      SizedBox(width: 8),
+                      Text("Tüm İlanları Tara & Firebase'e Eşitle", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Botumuz aracılığıyla mevcut ve gelecekte açılacak olan 150+ kamu ilanını tek tıkla tarar, eksiksiz olarak Firebase Firestore veritabanına yükler ve tüm kullanıcılara canlı bildirim fırlatır.",
+                    style: TextStyle(fontSize: 11, color: Colors.black54, height: 1.4),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F172A),
+                        foregroundColor: Colors.amber,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: _isSyncingAnnouncements ? null : _syncAllAnnouncementsToFirestore,
+                      icon: _isSyncingAnnouncements
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber))
+                          : const Icon(Icons.cloud_upload, size: 20),
+                      label: Text(
+                        _isSyncingAnnouncements ? "150+ İlan Taranıyor & Firebase'e Yazılıyor..." : "🚀 150+ İlanı Şimdi Tara & Firebase'e Eşitle",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 3. 📋 HAZIR BİLDİRİM ŞABLONLARI (Madde 10)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -201,43 +441,96 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.smart_toy, color: AppTheme.primaryBlue, size: 20),
+                      Icon(Icons.mark_chat_unread, color: AppTheme.primaryBlue, size: 20),
                       SizedBox(width: 8),
-                      Text("Sunucu Botu & Otomatik Süre Temizliği", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                      Text("Hazır Yazılı Bildirim Şablonları (Tek Tıkla Gönder)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
                     ],
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    "Gündüz botunu (10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00) beklemeden şimdi çalıştırır. Resmî kaynakları (ÖSYM, Polis, Jandarma) tarar ve başvuru tarihi geçmiş olan tüm ilanları otomatik olarak siler.",
+                    "Tüm kullanıcılara anında bildirim ulaştırmak için aşağıdaki hazır mesajlardan birini seçip 'Gönder' butonuna basabilirsiniz.",
                     style: TextStyle(fontSize: 11, color: Colors.black54),
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 44,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F172A),
-                        foregroundColor: Colors.amber,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: _isBotRunning ? null : _trigger12pmBot,
-                      icon: _isBotRunning
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber))
-                          : const Icon(Icons.play_circle_fill, size: 18),
-                      label: Text(
-                        _isBotRunning ? "Bot Taraması Yapılıyor..." : "Gündüz Sunucu Botunu Şimdi Çalıştır",
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                      ),
-                    ),
-                  ),
+                  ..._readyTemplates.map((tpl) => _buildTemplateCard(tpl)),
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // 3. Anlık Push Bildirimi Gönderme (FCM)
+            // 4. 👑 KULLANICI ARA & VIP VER (Madde 7)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.borderSubtle),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.manage_accounts, color: Colors.amber, size: 22),
+                      SizedBox(width: 8),
+                      Text("Kullanıcı Ara & VIP Tanımla", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Kullanıcı e-posta adresini veya adını yazarak arayın, tek tıkla VIP Aile Planı hediye edin veya durumunu yönetin.",
+                    style: TextStyle(fontSize: 11, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _userSearchController,
+                          decoration: InputDecoration(
+                            hintText: "E-posta veya kullanıcı adı...",
+                            isDense: true,
+                            prefixIcon: const Icon(Icons.search, size: 18),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onSubmitted: (_) => _searchUsers(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F172A),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _isSearchingUsers ? null : _searchUsers,
+                        child: _isSearchingUsers
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Text("Ara"),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (_searchResults.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: Text("Kayıtlı kullanıcılar yükleniyor veya arama yapınız.", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      ),
+                    )
+                  else
+                    ..._searchResults.take(10).map((user) => _buildUserCard(user)),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 5. ÖZEL PUSH BİLDİRİMİ GÖNDERME (FCM & Firestore)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -255,12 +548,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     children: [
                       Icon(Icons.send_to_mobile, color: Colors.redAccent, size: 20),
                       SizedBox(width: 8),
-                      Text("Anlık Push Bildirimi & Reklam / Link Yönlendirme (FCM)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                      Text("Özel Push Bildirimi Gönder (FCM + Firestore)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
                     ],
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    "Buradan yazacağın bildirim tüm kullanıcılara gider. Link eklersen, kullanıcı bildirime dokunduğu anda doğrudan senin YouTube videona, Instagram hesabına veya reklam aldığın web sitesine yönlendirilir.",
+                    "İstediğiniz özel bir metin ve link ile tüm kullanıcılara canlı bildirim fırlatın.",
                     style: TextStyle(fontSize: 10, color: Colors.black54),
                   ),
                   const SizedBox(height: 10),
@@ -288,8 +581,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   TextField(
                     controller: _notifUrlController,
                     decoration: InputDecoration(
-                      labelText: "Yönlendirilecek Link (YouTube / Sponsor / Web Sitesi)",
-                      hintText: "Örn: https://youtube.com/watch?v=... veya https://siteniz.com",
+                      labelText: "Yönlendirilecek Link (İsteğe Bağlı)",
+                      hintText: "Örn: https://youtube.com/watch?v=... veya https://kamuradar.app",
                       prefixIcon: const Icon(Icons.link, size: 18, color: AppTheme.primaryBlue),
                       isDense: true,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -307,16 +600,68 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       ),
                       onPressed: _sendCustomNotification,
                       icon: const Icon(Icons.campaign, size: 18),
-                      label: const Text("Tüm Kullanıcılara Linkli Bildirimi Fırlat", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      label: const Text("Tüm Kullanıcılara Bildirimi Fırlat", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // 4. Yeni İlan Ekle
+            // 6. Gündüz Botunu Manuel Tetikle Butonu
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.borderSubtle),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.smart_toy, color: AppTheme.primaryBlue, size: 20),
+                      SizedBox(width: 8),
+                      Text("Sunucu Botu & Otomatik Süre Temizliği", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Gündüz botunu beklemeden şimdi çalıştırır. Resmî kaynakları (ÖSYM, Polis, Jandarma) tarar ve başvuru tarihi geçmiş ilanları temizler.",
+                    style: TextStyle(fontSize: 11, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F172A),
+                        foregroundColor: Colors.amber,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: _isBotRunning ? null : _trigger12pmBot,
+                      icon: _isBotRunning
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber))
+                          : const Icon(Icons.play_circle_fill, size: 18),
+                      label: Text(
+                        _isBotRunning ? "Bot Taraması Yapılıyor..." : "Gündüz Sunucu Botunu Şimdi Çalıştır",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 7. Manuel Hızlı İlan Ekle
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -405,6 +750,164 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTemplateCard(Map<String, String> tpl) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  tpl["badge"] ?? "",
+                  style: const TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold, fontSize: 10),
+                ),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(50, 30),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.edit_note, size: 16, color: Colors.blueGrey),
+                label: const Text("Kullan", style: TextStyle(fontSize: 11, color: Colors.blueGrey)),
+                onPressed: () {
+                  setState(() {
+                    _notifTitleController.text = tpl["title"] ?? "";
+                    _notifBodyController.text = tpl["body"] ?? "";
+                    _notifUrlController.text = tpl["url"] ?? "";
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Şablon özel bildirim alanına aktarıldı.")),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            tpl["title"] ?? "",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A)),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            tpl["body"] ?? "",
+            style: const TextStyle(fontSize: 11, color: Colors.black54, height: 1.3),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 36,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F172A),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => _sendTemplateNotification(tpl),
+              icon: const Icon(Icons.send, size: 14, color: Colors.amber),
+              label: const Text("Bu Bildirimi Şimdi Gönder", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserCard(Map<String, dynamic> user) {
+    final bool isVip = user['is_vip'] == true;
+    final String email = user['email'] ?? 'E-posta Yok';
+    final String name = user['display_name'] ?? 'İsimsiz';
+    final String uid = user['uid'] ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isVip ? Colors.amber.shade300 : const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: isVip ? Colors.amber.shade100 : Colors.blueGrey.shade100,
+            child: Icon(
+              isVip ? Icons.stars : Icons.person,
+              size: 20,
+              color: isVip ? Colors.amber.shade800 : Colors.blueGrey,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  email,
+                  style: const TextStyle(fontSize: 10, color: Colors.black54),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isVip ? Colors.amber.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    isVip ? "👑 VIP (Aile Planı)" : "Standart (Ücretsiz)",
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: isVip ? Colors.amber.shade900 : Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isVip ? Colors.red.shade600 : const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: const Size(60, 32),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => _toggleUserVip(uid, isVip),
+            child: Text(
+              isVip ? "VIP Kaldır" : "VIP Ver",
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }

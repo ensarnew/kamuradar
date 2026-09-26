@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'cache_service.dart';
+import 'firebase_sync_service.dart';
 
 // Arka planda gelen bildirimleri yakalayan üst düzey fonksiyon
 @pragma('vm:entry-point')
@@ -105,10 +108,50 @@ class NotificationService {
       if (kDebugMode) {
         print("📱 Cihaz FCM Token: $token");
       }
+      // 7. Firestore Canlı Bildirim Dinleyicisini Başlat
+      listenToFirestoreNotifications();
     } catch (e) {
       if (kDebugMode) {
         print("⚠️ Firebase Messaging başlatılamadı: $e");
       }
+    }
+  }
+
+  static DateTime _serviceStartTime = DateTime.now().subtract(const Duration(seconds: 10));
+  static VoidCallback? onLowQuotaWarning;
+
+  // Firestore üzerinden anlık yayınlanan bildirimleri dinle (Yedek & %100 Canlı Garanti)
+  static void listenToFirestoreNotifications() {
+    try {
+      FirebaseFirestore.instance
+          .collection('notifications')
+          .orderBy('created_at', descending: true)
+          .limit(1)
+          .snapshots()
+          .listen((snapshot) {
+        if (snapshot.docs.isNotEmpty) {
+          final doc = snapshot.docs.first;
+          final data = doc.data();
+          final Timestamp? ts = data['created_at'] as Timestamp?;
+          if (ts != null) {
+            final docTime = ts.toDate();
+            if (docTime.isAfter(_serviceStartTime)) {
+              _serviceStartTime = docTime; // Tekrar tetiklemeyi önle
+              final title = data['title'] as String? ?? "Yeni Kamu İlanı";
+              final body = data['body'] as String? ?? "Radara yeni kamu duyurusu eklendi.";
+              showLocalNotification(
+                title: title,
+                body: body,
+                id: doc.id.hashCode,
+              );
+            }
+          }
+        }
+      }, onError: (err) {
+        if (kDebugMode) print("Firestore bildirim dinleme hatası: $err");
+      });
+    } catch (e) {
+      if (kDebugMode) print("Firestore listener başlatılamadı: $e");
     }
   }
 
@@ -147,6 +190,21 @@ class NotificationService {
         body,
         platformDetails,
       );
+
+      // VIP olmayan kullanıcının bildirim hakkını 1 azalt (Kullanılanı 1 artır)
+      final isVip = await FirebaseSyncService.isVip();
+      if (!isVip) {
+        final used = await CacheService.incrementUsedNotifications();
+        final bonus = await CacheService.getBonusNotifications();
+        final totalAllowed = 3 + bonus;
+        final remaining = (totalAllowed - used).clamp(0, 9999);
+
+        // Kalan hak tam 1 olduğunda uyarı callback'ini tetikle
+        if (remaining == 1) {
+          onLowQuotaWarning?.call();
+        }
+      }
+
       if (kDebugMode) {
         print("📣 Yerel bildirim gösterildi: $title - $body");
       }

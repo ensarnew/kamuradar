@@ -1,0 +1,8 @@
+# Sensitive Credentials
+backend/firebase_credentials.json
+*.key
+*.pem
+
+# Flutter artifacts
+mobile/build/
+.dart_tool/

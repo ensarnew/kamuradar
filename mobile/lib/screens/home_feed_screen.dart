@@ -89,6 +89,8 @@ class HomeFeedScreen extends StatefulWidget {
   final bool isVip;
   final VoidCallback? onUpgradeVip;
 
+  static List<ChannelAlarm> get catalog => _HomeFeedScreenState.staticChannelsCatalog;
+
   const HomeFeedScreen({
     Key? key,
     this.isVip = false,
@@ -104,7 +106,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   bool get _effectiveVip => widget.isVip || _isUserVip;
   final int _baseNotificationLimit = 3;
   int _bonusNotifications = 0;
-  int _usedNotifications = 1;
+  int _usedNotifications = 0;
   bool _isLoadingLive = false;
   bool _isOfflineMode = false;
 
@@ -116,6 +118,13 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     super.initState();
     _loadCachedAlarms();
     _syncWithLiveServer();
+
+    NotificationService.onLowQuotaWarning = () {
+      if (mounted) {
+        _loadCachedAlarms();
+        _showLowQuotaAlert();
+      }
+    };
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkFirstLaunchPrompts();
@@ -435,7 +444,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   }
 
 
-    final List<ChannelAlarm> _channels = [
+    static final List<ChannelAlarm> staticChannelsCatalog = [
     ChannelAlarm(
       id: "saglik-01",
       organization: "Sağlık Bakanlığı",
@@ -3140,6 +3149,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       isAlarmActive: false,
     ),
   ];
+  late final List<ChannelAlarm> _channels = List.from(staticChannelsCatalog);
 
 
   int get _activeCount => _channels.where((c) => c.isAlarmActive).length;
@@ -3544,6 +3554,113 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     );
   }
 
+  // KALAN 1 HAK POP-UP UYARISI
+  void _showLowQuotaAlert() {
+    if (_effectiveVip) return;
+    if (_remainingNotifications != 1) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131E33),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFF59E0B), width: 1.5),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 28),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Son 1 Bildirim Hakkı!",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Ücretsiz bildirim kotanızdan yalnızca 1 hakkınız kaldı. Yeni kamu ve KPSS ilanlarını anında yakalamak için:",
+              style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 13, height: 1.4),
+            ),
+            SizedBox(height: 12),
+            Text(
+              "• 🎬 Kısa bir reklam izleyerek anında +2 ek hak kazanabilirsiniz.\n• 👑 VIP Aile Planı'na geçerek 4 kişi sınırsız ve anlık bildirim alabilirsiniz.",
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, height: 1.5),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Kapat", style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF38BDF8),
+              side: const BorderSide(color: Color(0xFF38BDF8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.play_circle_fill, size: 16),
+            label: const Text("Reklam İzle (+2 Hak)"),
+            onPressed: () {
+              Navigator.pop(ctx);
+              AdService.instance.showRewardedAd(
+                onStarted: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("🎬 Sponsorlu reklam yükleniyor ve oynatılıyor...")),
+                  );
+                },
+                onRewardEarned: () async {
+                  if (mounted) {
+                    final newBonus = _bonusNotifications + 2;
+                    await CacheService.saveBonusNotifications(newBonus);
+                    setState(() {
+                      _bonusNotifications = newBonus;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: Colors.green.shade700,
+                        content: Text("🎉 Video tamamlandı! +2 Bildirim Alma Hakkı tanımlandı (Kalan: $_remainingNotifications)."),
+                      ),
+                    );
+                  }
+                },
+                onFailure: (err) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(backgroundColor: AppTheme.urgentRed, content: Text(err)),
+                  );
+                },
+              );
+            },
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+              foregroundColor: const Color(0xFF0F172A),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.stars, size: 16),
+            label: const Text("VIP Yükselt", style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FamilySubscriptionScreen(isVip: _effectiveVip),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   // AYLIK BİLDİRİM KOTASI POP-UP'I (REKLAMLA YÜKSELEN BÖLÜM)
   void _showNotificationQuotaPopUp() {
     showModalBottomSheet(
@@ -3604,9 +3721,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 ),
                 onPressed: () {
                   Navigator.pop(ctx);
-                  setState(() => _isUserVip = true);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("👑 VIP Aktif! Sınırsız bildirim alımı açıldı.")),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FamilySubscriptionScreen(isVip: _effectiveVip),
+                    ),
                   );
                 },
                 child: const Text("39.99 ₺ ile Sınırsız VIP Yap (+3 Arkadaş)", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),

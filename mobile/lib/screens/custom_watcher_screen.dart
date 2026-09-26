@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/custom_link.dart';
 import '../services/firebase_sync_service.dart';
 import '../services/notification_service.dart';
+import 'family_subscription_screen.dart';
 
 
 class CustomWatcherScreen extends StatefulWidget {
@@ -239,10 +240,13 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
 
     await _saveWatchers();
 
-    if (hasAnnouncement && _watchers[index].isNotificationActive) {
+    if (_watchers[index].isNotificationActive) {
       await NotificationService.showLocalNotification(
-        title: "🔍 Özel Tarama: ${w.label}",
-        body: scanResult,
+        title: hasAnnouncement ? "🎯 Özel Tarama: ${w.label} (Yeni Duyuru!)" : "🔍 Özel Tarama: ${w.label}",
+        body: hasAnnouncement
+            ? scanResult
+            : "Sayfa başarıyla tarandı: Henüz yeni bir duyuru tespit edilmedi, takibimiz sürüyor.",
+        id: w.id.hashCode,
       );
     }
 
@@ -377,14 +381,20 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
               ),
             ),
             child: TextButton.icon(
-              onPressed: () => setState(() => _isUserVip = !_isUserVip),
+              onPressed: _isUserVip
+                  ? null
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const FamilySubscriptionScreen()),
+                      ).then((_) => _checkVip());
+                    },
               icon: Icon(
                 _isUserVip ? Icons.workspace_premium : Icons.lock_outline,
                 size: 14,
                 color: _isUserVip ? const Color(0xFFF59E0B) : const Color(0xFF94A3B8),
               ),
               label: Text(
-                _isUserVip ? "VIP Aktif" : "VIP Kilitli",
+                _isUserVip ? "VIP Aktif 👑" : "VIP'ye Yükselt",
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
@@ -433,14 +443,19 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF59E0B),
                 foregroundColor: const Color(0xFF0F172A),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 4,
               ),
-              onPressed: () => setState(() => _isUserVip = true),
-              icon: const Icon(Icons.workspace_premium, size: 16),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FamilySubscriptionScreen()),
+                ).then((_) => _checkVip());
+              },
+              icon: const Icon(Icons.workspace_premium, size: 18),
               label: const Text(
-                "39.99 ₺ ile VIP Başlat (+3 Arkadaş)",
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+                "VIP Aile Planına Geç (+3 Arkadaş)",
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
               ),
             ),
           ],

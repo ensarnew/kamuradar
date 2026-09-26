@@ -36,8 +36,17 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final errStr = e.toString();
+        String userFriendly = "Google ile giriş yapılamadı.";
+        if (errStr.contains("network") || errStr.contains("SocketException")) {
+          userFriendly = "İnternet bağlantınızı kontrol edin ve tekrar deneyin.";
+        } else if (errStr.contains("10") || errStr.contains("DEVELOPER_ERROR")) {
+          userFriendly = "Google Girişi Yapılandırma Hatası: Firebase Console'a SHA-1 parmak izi eklenmelidir.";
+        } else if (errStr.contains("12500")) {
+          userFriendly = "Google Play Hizmetleri bağlantı hatası (12500). Lütfen tekrar deneyin.";
+        }
         setState(() {
-          _errorMessage = "Giriş yapılamadı veya iptal edildi. Lütfen tekrar deneyin.";
+          _errorMessage = userFriendly;
         });
       }
     } finally {
