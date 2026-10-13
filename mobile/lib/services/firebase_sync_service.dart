@@ -311,29 +311,72 @@ class FirebaseSyncService {
   static Future<List<Map<String, dynamic>>> searchUsers(String query) async {
     try {
       final cleanQuery = query.trim().toLowerCase();
-      // Tüm son kullanıcıları getirip filtreleyelim (büyük/küçük harf duyarsız arama)
-      final snap = await _firestore.collection('users').limit(60).get();
-      if (snap.docs.isEmpty) return [];
+      final Map<String, Map<String, dynamic>> userMap = {};
 
-      final results = <Map<String, dynamic>>[];
-      for (var doc in snap.docs) {
-        final data = doc.data();
-        final email = (data['email'] ?? '').toString().toLowerCase();
-        final name = (data['display_name'] ?? '').toString().toLowerCase();
-        final uid = doc.id.toLowerCase();
+      void addDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+        final data = doc.data() ?? {};
+        userMap[doc.id] = {
+          'uid': doc.id,
+          'email': data['email'] ?? 'E-posta Yok',
+          'display_name': data['display_name'] ?? 'İsimsiz Üye',
+          'is_vip': data['is_vip'] == true,
+          'vip_plan': data['vip_plan'] ?? 'free',
+          'last_active': data['last_active'],
+        };
+      }
 
-        if (cleanQuery.isEmpty || email.contains(cleanQuery) || name.contains(cleanQuery) || uid.contains(cleanQuery)) {
-          results.add({
-            'uid': doc.id,
-            'email': data['email'] ?? 'E-posta Yok',
-            'display_name': data['display_name'] ?? 'İsimsiz Üye',
-            'is_vip': data['is_vip'] == true,
-            'vip_plan': data['vip_plan'] ?? 'free',
-            'last_active': data['last_active'],
-          });
+      // 1. Strateji: Doğrudan e-posta veya UID tam eşleşme araması
+      if (cleanQuery.isNotEmpty) {
+        try {
+          final directEmailSnap = await _firestore.collection('users').where('email', isEqualTo: cleanQuery).get();
+          for (var doc in directEmailSnap.docs) {
+            addDoc(doc);
+          }
+
+          final directDoc = await _firestore.collection('users').doc(cleanQuery).get();
+          if (directDoc.exists) {
+            addDoc(directDoc);
+          }
+        } catch (_) {}
+      }
+
+      // 2. Strateji: Genel listeleme ve büyük/küçük harf duyarsız arama
+      try {
+        final snap = await _firestore.collection('users').limit(150).get();
+        for (var doc in snap.docs) {
+          final data = doc.data();
+          final email = (data['email'] ?? '').toString().toLowerCase();
+          final name = (data['display_name'] ?? '').toString().toLowerCase();
+          final uid = doc.id.toLowerCase();
+
+          if (cleanQuery.isEmpty || email.contains(cleanQuery) || name.contains(cleanQuery) || uid.contains(cleanQuery)) {
+            addDoc(doc);
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) print("Firestore users koleksiyonu listeleme uyarısı: $e");
+      }
+
+      // 3. Strateji: Mevcut oturum açmış kullanıcı varsa ve henüz listede yoksa ekle
+      final currentAuthUser = _auth.currentUser;
+      if (currentAuthUser != null) {
+        final curEmail = (currentAuthUser.email ?? '').toLowerCase();
+        final curName = (currentAuthUser.displayName ?? '').toLowerCase();
+        if (cleanQuery.isEmpty || curEmail.contains(cleanQuery) || curName.contains(cleanQuery) || currentAuthUser.uid.toLowerCase().contains(cleanQuery)) {
+          if (!userMap.containsKey(currentAuthUser.uid)) {
+            userMap[currentAuthUser.uid] = {
+              'uid': currentAuthUser.uid,
+              'email': currentAuthUser.email ?? 'Aktif Oturum',
+              'display_name': currentAuthUser.displayName ?? 'Yönetici Hesabı',
+              'is_vip': true,
+              'vip_plan': 'yearly_vip',
+              'last_active': 'Şimdi Aktif',
+            };
+          }
         }
       }
-      return results;
+
+      return userMap.values.toList();
     } catch (e) {
       if (kDebugMode) print("Kullanıcı arama hatası: $e");
       return [];

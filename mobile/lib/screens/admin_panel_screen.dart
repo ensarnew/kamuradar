@@ -143,6 +143,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           'application_type': ch.applicationType,
           'status': computedStatus,
           'category': ch.category,
+          'sector_type': ch.sectorType,
+          'sectorType': ch.sectorType,
           'education_level': ch.educationLevel,
           'kpss_status': ch.kpssStatus,
           'exam_date': ch.examDate ?? '',
