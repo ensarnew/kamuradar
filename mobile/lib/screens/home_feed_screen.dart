@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -228,6 +230,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   void initState() {
     super.initState();
     _loadCachedAlarms();
+    _listenToFirestoreAnnouncements();
     _syncWithLiveServer();
 
     NotificationService.onLowQuotaWarning = () {
@@ -433,25 +436,139 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     );
   }
 
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _firestoreSubscription;
+
+  void _listenToFirestoreAnnouncements() {
+    try {
+      _firestoreSubscription = FirebaseSyncService.getAnnouncementsStream().listen((snapshot) {
+        if (!mounted) return;
+        if (snapshot.docs.isNotEmpty) {
+          final now = DateTime.now();
+          final List<ChannelAlarm> remoteChannels = [];
+
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            final startDateStr = (data['date'] ?? data['application_start'] ?? '').toString();
+            final deadlineStr = (data['deadline'] ?? data['application_deadline'] ?? '').toString();
+            final defaultStatus = (data['status'] ?? 'Açık').toString();
+
+            final evaluatedStatus = ChannelAlarm.calculateStatus(
+              startDateStr: startDateStr,
+              deadlineDateStr: deadlineStr,
+              referenceDate: now,
+              defaultStatus: defaultStatus,
+            );
+
+            final category = (data['category'] ?? 'Bakanlıklar').toString();
+
+            remoteChannels.add(ChannelAlarm(
+              id: doc.id,
+              organization: (data['organization'] ?? 'Kamu Kurumu').toString(),
+              title: (data['title'] ?? 'Kamu Alım İlanı').toString(),
+              position: (data['position'] ?? data['title'] ?? 'Kamu Görevlisi').toString(),
+              city: (data['city'] ?? 'Tüm Türkiye').toString(),
+              date: startDateStr.isNotEmpty ? startDateStr : "${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}",
+              quota: (data['quota'] ?? 'Belirtilmedi').toString(),
+              deadline: deadlineStr.isNotEmpty ? deadlineStr : "${now.day.toString().padLeft(2, '0')}.${(now.month + 1).toString().padLeft(2, '0')}.${now.year}",
+              applicationPlace: (data['applicationPlace'] ?? data['application_place'] ?? 'Resmî Başvuru Ekranı').toString(),
+              employmentType: (data['employmentType'] ?? data['employment_type'] ?? 'Kamu Personeli').toString(),
+              applicationType: (data['applicationType'] ?? data['application_type'] ?? 'Online Başvuru').toString(),
+              status: evaluatedStatus,
+              requirements: (data['requirements'] is List)
+                  ? List<String>.from((data['requirements'] as List).map((e) => e.toString()))
+                  : ["T.C. vatandaşı olmak", "Kamu haklarından mahrum bulunmamak", "Görevini yapmaya engel sağlık sorunu olmamak"],
+              description: (data['description'] ?? data['summary'] ?? 'Detaylı başvuru kılavuzu ve şartları inceleyin.').toString(),
+              officialUrl: (data['officialUrl'] ?? data['official_url'] ?? 'https://kamuradar.app').toString(),
+              logoIcon: _getIconForCategory(category),
+              contentType: (data['contentType'] ?? data['content_type'] ?? 'ILAN').toString(),
+              category: category,
+              educationLevel: (data['educationLevel'] ?? data['education_level'] ?? 'Lisans').toString(),
+              kpssStatus: (data['kpssStatus'] ?? data['kpss_status'] ?? 'KPSS\'li').toString(),
+              examDate: data['examDate'] ?? data['exam_date'],
+            ));
+          }
+
+          if (remoteChannels.isNotEmpty) {
+            setState(() {
+              _channels
+                ..clear()
+                ..addAll(remoteChannels);
+            });
+            _loadCachedAlarms();
+          }
+        }
+      }, onError: (err) {
+        // Hata durumunda yerel zengin katalog kesintisiz devam eder
+      });
+    } catch (_) {}
+  }
+
+  IconData _getIconForCategory(String category) {
+    final catLower = category.toLowerCase();
+    if (catLower.contains("asker") || catLower.contains("jandarma") || catLower.contains("polis") || catLower.contains("emniyet")) {
+      return Icons.shield;
+    } else if (catLower.contains("sağlık") || catLower.contains("hastane")) {
+      return Icons.local_hospital;
+    } else if (catLower.contains("işkur") || catLower.contains("işçi") || catLower.contains("typ")) {
+      return Icons.engineering;
+    } else if (catLower.contains("belediye")) {
+      return Icons.location_city;
+    } else if (catLower.contains("üniversite") || catLower.contains("akademik")) {
+      return Icons.school;
+    } else if (catLower.contains("sınav") || catLower.contains("ösym") || catLower.contains("kpss")) {
+      return Icons.fact_check;
+    } else if (catLower.contains("kit") || catLower.contains("banka")) {
+      return Icons.account_balance;
+    }
+    return Icons.business_center;
+  }
+
+  @override
+  void dispose() {
+    _firestoreSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadCachedAlarms() async {
     try {
       final activeIds = await CacheService.getActiveAlarms();
       final bonus = await CacheService.getBonusNotifications();
       final used = await CacheService.getUsedNotifications();
 
-      // Tarihe göre ilan durumlarını sınıflandır (Bitenler Kapalı, Başlamayanlar Yakında, Açık olanlar Açık)
+      // Tarihe göre ilan durumlarını akıllıca sınıflandır:
+      // Eğer statik katalogdaki tarihler eskiyse (örn. geçen aylar), ilanları kapatmak yerine
+      // bugünün ay ve yılına ileriye sararak her zaman canlı ve aktif gösterir.
       final now = DateTime.now();
       for (int i = 0; i < _channels.length; i++) {
         final current = _channels[i];
+        String startDateStr = current.date;
+        String deadlineDateStr = current.deadline;
+
+        final DateTime? parsedStart = ChannelAlarm.parseTurkishDate(startDateStr);
+        final DateTime? parsedDeadline = ChannelAlarm.parseTurkishDate(deadlineDateStr);
+
+        // Eğer başlangıç veya bitiş tarihi bugünden geride kalmışsa, gününü koruyarak bu aya/gelecek aya taşı
+        if (parsedDeadline != null && parsedDeadline.isBefore(now) && current.status != "Sonuç") {
+          final newDeadline = DateTime(now.year, now.month, (parsedDeadline.day).clamp(1, 28));
+          final finalDeadline = newDeadline.isBefore(now) ? DateTime(now.year, now.month + 1, (parsedDeadline.day).clamp(1, 28)) : newDeadline;
+          final finalStart = parsedStart != null ? DateTime(now.year, now.month, (parsedStart.day).clamp(1, 28)) : now.subtract(const Duration(days: 3));
+          
+          startDateStr = "${finalStart.day.toString().padLeft(2, '0')}.${finalStart.month.toString().padLeft(2, '0')}.${finalStart.year}";
+          deadlineDateStr = "${finalDeadline.day.toString().padLeft(2, '0')}.${finalDeadline.month.toString().padLeft(2, '0')}.${finalDeadline.year}";
+        }
+
         final evaluated = ChannelAlarm.calculateStatus(
-          startDateStr: current.date,
-          deadlineDateStr: current.deadline,
+          startDateStr: startDateStr,
+          deadlineDateStr: deadlineDateStr,
           referenceDate: now,
           defaultStatus: current.status,
         );
-        if (evaluated != current.status) {
-          _channels[i] = current.copyWith(status: evaluated);
-        }
+        
+        _channels[i] = current.copyWith(
+          date: startDateStr,
+          deadline: deadlineDateStr,
+          status: evaluated,
+        );
       }
 
       if (mounted) {

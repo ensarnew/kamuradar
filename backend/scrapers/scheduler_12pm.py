@@ -62,11 +62,12 @@ class Daily12PMScheduler:
 
             # Eğer TAM BUGÜN başladıysa -> Firebase Push Bildirimi fırlat!
             if date_status["is_started_today"]:
+                cat_val = getattr(ann.category, 'value', str(ann.category))
                 notif_res = FirebaseNotificationService.notify_announcement_opened_today(
                     title=ann.title,
                     organization=ann.organization,
                     official_url=ann.official_url,
-                    category=ann.category.value
+                    category=cat_val
                 )
                 notifications_sent.append({
                     "announcement_id": ann_id,

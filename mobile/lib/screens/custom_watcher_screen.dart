@@ -133,6 +133,27 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
             _watchers.clear();
             _watchers.addAll(loaded);
           });
+          _checkAndRunPeriodicScan();
+        }
+      }
+    } catch (_) {}
+  }
+
+  // ⏰ 2 Saatte Bir Otomatik Denetim & Kullanıcıyı Bilgilendirme Motoru
+  Future<void> _checkAndRunPeriodicScan() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastScanMillis = prefs.getInt("last_watcher_auto_scan_millis") ?? 0;
+      final nowMillis = DateTime.now().millisecondsSinceEpoch;
+      final diffMinutes = (nowMillis - lastScanMillis) / (1000 * 60);
+
+      // 2 saat (120 dakika) geçmişse veya ilk kez açılıyorsa otomatik tara ve bildirim garantile
+      if (diffMinutes >= 120) {
+        await prefs.setInt("last_watcher_auto_scan_millis", nowMillis);
+        for (var w in _watchers) {
+          if (w.isNotificationActive) {
+            await _scanWatcher(w);
+          }
         }
       }
     } catch (_) {}

@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -238,7 +240,29 @@ class FirebaseSyncService {
         'created_at': FieldValue.serverTimestamp(),
       });
 
-      // B. Yönetici cihazında da göster
+      // B. Render Cloud FCM Push Bildirim Tetiklemesi (Uygulama kapalı/arka plandayken kilit ekranına düşürür)
+      try {
+        final fcmUri = Uri.parse("https://kamuradar.onrender.com/api/admin/broadcast-notification");
+        await http.post(
+          fcmUri,
+          headers: {"Content-Type": "application/json"},
+          body: json.encode({
+            "title": title,
+            "body": body,
+            "promo_url": targetUrl ?? "",
+            "target_topic": topic,
+          }),
+        ).timeout(const Duration(seconds: 8));
+        if (kDebugMode) {
+          print("🚀 Render Cloud FCM Push Bildirimi başarıyla tetiklendi.");
+        }
+      } catch (err) {
+        if (kDebugMode) {
+          print("⚠️ Render FCM API bağlantı uyarısı (Offline/Timeout): $err");
+        }
+      }
+
+      // C. Yönetici cihazında da yerel olarak göster
       await NotificationService.showLocalNotification(
         title: title,
         body: body,

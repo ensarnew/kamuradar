@@ -35,6 +35,18 @@ class FirebaseNotificationService:
             logger.info("ℹ️ firebase-admin kütüphanesi kurulu değil, simülasyon modunda çalışıyor.")
             return False
 
+        cred_json_env = os.getenv("FIREBASE_CREDENTIALS_JSON")
+        if cred_json_env:
+            try:
+                cred_dict = json.loads(cred_json_env)
+                cred = credentials.Certificate(cred_dict)
+                cls._app = firebase_admin.initialize_app(cred)
+                cls._initialized = True
+                logger.info("✅ Firebase Admin SDK başarıyla başlatıldı (FIREBASE_CREDENTIALS_JSON env)")
+                return True
+            except Exception as e:
+                logger.warning(f"⚠️ FIREBASE_CREDENTIALS_JSON başlatılırken hata oluştu: {e}")
+
         cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "firebase_credentials.json")
         if os.path.exists(cred_path):
             try:
