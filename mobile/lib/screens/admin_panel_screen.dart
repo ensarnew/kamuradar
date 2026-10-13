@@ -209,7 +209,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       if (res.statusCode == 200) {
         final decoded = json.decode(res.body);
         final openCount = decoded["open_announcements_today"] ?? 0;
-        message = "🤖 Canlı Sunucu Taraması Tamamlandı! $openCount adet açık ilan tespit edildi ve bildirim tetiklendi.";
+        final savedCount = decoded["saved_to_firestore"] ?? 0;
+        message = "🤖 Canlı Bot Taraması Tamamlandı!\n🟢 $openCount Açık İlan | ☁️ $savedCount İlan Firebase'e Yazıldı ve Bildirim Fırlatıldı!";
         isSuccess = true;
       } else {
         isSuccess = false;

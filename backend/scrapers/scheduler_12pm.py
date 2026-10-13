@@ -44,10 +44,20 @@ class Daily12PMScheduler:
         new_jnd = OfficialSourcesScraper.scrape_jandarma()
         new_msu = OfficialSourcesScraper.scrape_msu()
         new_osym = OfficialSourcesScraper.scrape_osym()
+        new_rg = OfficialSourcesScraper.scrape_resmi_gazete()
+        new_iskur = OfficialSourcesScraper.scrape_iskur_kamu()
+        new_kk = OfficialSourcesScraper.scrape_kariyer_kapisi()
 
-        all_new = new_jnd + new_msu + new_osym
+        all_new = new_jnd + new_msu + new_osym + new_rg + new_iskur + new_kk
         for item in all_new:
             db.announcements[item.id] = item
+
+        # Canlı taranan yeni ilanları doğrudan Firebase Firestore 'announcements' koleksiyonuna kaydet
+        saved_firestore_count = 0
+        try:
+            saved_firestore_count = FirebaseNotificationService.save_announcements_to_firestore(list(db.announcements.values()))
+        except Exception as e:
+            print(f"Firestore eşitleme hatası: {e}")
 
         # 2. Tarih Karşılaştırması & Firebase Bildirim Tetiklemesi
         open_today_count = 0
@@ -98,7 +108,9 @@ class Daily12PMScheduler:
             print(f"Tarama bildirim hatası: {e}")
 
         duration = round(time.time() - start_time, 2)
-        cls.last_run_timestamp = datetime.now().strftime("%Y-%m-%d 12:00")
+        now_dt = datetime.now()
+        current_time_str = now_dt.strftime("%Y-%m-%d %H:%M")
+        cls.last_run_timestamp = current_time_str
         cls.last_run_stats = {
             "status": "success",
             "executed_at": cls.last_run_timestamp,
@@ -106,12 +118,13 @@ class Daily12PMScheduler:
             "scanned_public_sources": len(all_new),
             "scanned_custom_links": len(db.custom_watchers),
             "open_announcements_today": open_today_count,
+            "saved_to_firestore": saved_firestore_count,
             "notifications_sent_count": len(notifications_sent),
             "notifications_sent": notifications_sent,
             "custom_changes_detected": len(updated_custom_links),
             "updated_custom_links": updated_custom_links,
             "cpu_usage_minutes_today": round(max(duration, 0.85) / 60, 3),
-            "message": f"Saat 12:00 taraması tamamlandı: {open_today_count} açık ilan doğrulandı, {len(notifications_sent)} bildirim Firebase'e iletildi."
+            "message": f"Otomatik bot taraması tamamlandı: {open_today_count} açık ilan tespit edildi, Firestore'a eşitlendi ve tüm cihazlara bildirim fırlatıldı."
         }
 
 

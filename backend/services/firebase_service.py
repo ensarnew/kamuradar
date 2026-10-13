@@ -224,3 +224,58 @@ class FirebaseNotificationService:
             "sent_count": sent_count,
             "title": notif_title
         }
+
+    @classmethod
+    def save_announcements_to_firestore(cls, announcements: list) -> int:
+        """
+        Bot tarafından taranan canlı ilanları doğrudan Firebase Firestore 'announcements' koleksiyonuna yazar.
+        Böylece mobil uygulama (ve web) anında canlı olarak veriyi çeker.
+        """
+        cls.initialize()
+        if not announcements:
+            return 0
+
+        saved_count = 0
+        try:
+            if cls._initialized and FIREBASE_INSTALLED:
+                from firebase_admin import firestore
+                db_client = firestore.client()
+                batch = db_client.batch()
+
+                for ann in announcements:
+                    doc_id = ann.get('id') if isinstance(ann, dict) else getattr(ann, 'id', f"bot_{saved_count + 1}")
+                    doc_ref = db_client.collection('announcements').document(doc_id)
+                    
+                    data = ann if isinstance(ann, dict) else {
+                        'id': ann.id,
+                        'organization': ann.organization,
+                        'title': ann.title,
+                        'position': getattr(ann, 'position', ann.title),
+                        'category': getattr(ann.category, 'value', str(ann.category)),
+                        'sector_type': getattr(ann, 'sector_type', 'KAMU'),
+                        'sectorType': getattr(ann, 'sector_type', 'KAMU'),
+                        'content_type': getattr(ann.content_type, 'value', str(ann.content_type)),
+                        'date': getattr(ann, 'application_start', ''),
+                        'deadline': getattr(ann, 'application_deadline', ''),
+                        'official_url': getattr(ann, 'official_url', 'https://kamuradar.app'),
+                        'officialUrl': getattr(ann, 'official_url', 'https://kamuradar.app'),
+                        'summary': getattr(ann, 'summary', ''),
+                        'description': getattr(ann, 'summary', ''),
+                        'status': 'Açık',
+                        'requirements': getattr(ann, 'requirements', ['T.C. vatandaşı olmak']),
+                        'synced_at': firestore.SERVER_TIMESTAMP,
+                        'source': 'kamuradar_cloud_bot'
+                    }
+                    batch.set(doc_ref, data, merge=True)
+                    saved_count += 1
+                    if saved_count % 400 == 0:
+                        batch.commit()
+                        batch = db_client.batch()
+
+                batch.commit()
+                logger.info(f"☁️ Firestore: {saved_count} adet bot ilanı 'announcements' koleksiyonuna yazıldı.")
+                return saved_count
+        except Exception as e:
+            logger.error(f"Firestore'a bot ilanlarını yazma hatası: {e}")
+
+        return saved_count

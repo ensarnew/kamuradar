@@ -222,17 +222,24 @@ def get_user_status(user_id: str):
     }
 
 
-# ----------------- 5. SAAT 12:00 GÜNLÜK TOPLU TARAMA MOTORU -----------------
+# ----------------- 5. GÜNDÜZ PERİYODİK TARAMA MOTORU (10, 12, 14, 16, 18, 20, 22) -----------------
 
 @app.post("/api/cron/trigger-12pm")
-def trigger_12pm_cron():
+@app.post("/api/cron/trigger-slot")
+def trigger_periodic_cron(slot_hour: Optional[int] = None):
+    """
+    10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00 periyotlarında
+    canlı kamu kaynaklarını (Resmî Gazete, İŞKUR, CBİKO) tarar,
+    yeni ilanları Firestore 'announcements' koleksiyonuna doğrudan basar
+    ve 'kamuradar_all' ile 'announcements' konularına anlık push bildirim fırlatır.
+    """
     report = Daily12PMScheduler.run_daily_12pm_batch()
     return report
 
 @app.get("/api/cron/status")
 def get_cron_status():
     return {
-        "schedule": "Her gün tek seferlik - Saat 12:00 (Öğlen)",
+        "schedule": "Gündüz Periyodik: 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00",
         "last_run": Daily12PMScheduler.last_run_timestamp,
         "last_run_stats": Daily12PMScheduler.last_run_stats
     }
