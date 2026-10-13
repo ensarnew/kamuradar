@@ -66,32 +66,97 @@ class CustomUrlWatcherService:
         return watcher
 
     @staticmethod
+    def load_watchers_from_firestore() -> int:
+        """
+        Firebase Firestore 'custom_watchers' koleksiyonundaki tüm kullanıcı linklerini botun hafızasına çeker.
+        """
+        try:
+            from services.firebase_service import FirebaseNotificationService
+            FirebaseNotificationService.initialize()
+            from firebase_admin import firestore
+            db_client = firestore.client()
+            docs = db_client.collection('custom_watchers').stream()
+            count = 0
+            for doc in docs:
+                data = doc.to_dict()
+                wid = doc.id
+                url = data.get('url', '')
+                if not url:
+                    continue
+                watcher = CustomUrlWatcher(
+                    id=wid,
+                    user_id=data.get('user_id', 'unknown'),
+                    url=url,
+                    label=data.get('label', 'Özel Takip Linki'),
+                    last_checked_12pm=data.get('last_checked_12pm', 'Sunucu Taraması Bekleniyor'),
+                    last_content_hash=data.get('last_content_hash'),
+                    last_change_detected=data.get('last_change_detected'),
+                    has_update=data.get('has_update', False),
+                    notes=data.get('ai_criteria', '') or data.get('notes', '')
+                )
+                # target_keywords ve fcm_token ek öznitelikler
+                setattr(watcher, 'target_keywords', data.get('target_keywords', []))
+                setattr(watcher, 'fcm_token', data.get('fcm_token', ''))
+                db.custom_watchers[wid] = watcher
+                count += 1
+            return count
+        except Exception as e:
+            return 0
+
+    @staticmethod
     def scan_watcher_12pm(watcher: CustomUrlWatcher, incoming_content: Optional[str] = None) -> Tuple[bool, str]:
         """
-        Saat 12:00'de botun URL'yi kontrol etme fonksiyonu.
-        Canlı ortamda doğrudan internetten sayfayı çeker ve hash karşılaştırması yapar.
+        Gündüz periyotlarında botun URL'yi kontrol etme fonksiyonu.
+        Kullanıcının belirlediği arama kriterlerine göre:
+        - Eğer aranan duyuru/ilan sayfada bulunduysa: '🎯 [VAR] Yeni Duyuru Tespit Edildi!' bildirir.
+        - Eğer aranan duyuru bulunamadıysa: '❌ [YOK] Aradığınız kriterler henüz yayında değil.' bildirir.
         """
-        now_str = datetime.now().strftime("%Y-%m-%d 12:00")
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         
-        # Eğer dışarıdan içerik verilmediyse canlı URL'yi çek
         raw_html = incoming_content if incoming_content is not None else fetch_live_url(watcher.url)
         clean_text = normalize_text_content(raw_html)
         new_hash = compute_hash(clean_text)
 
         watcher.last_checked_12pm = now_str
 
-        # İlk tarama durumu
+        # 1. Hedef kelime kontrolü (Target Keywords)
+        target_keywords = getattr(watcher, 'target_keywords', []) or []
+        if not target_keywords and watcher.notes:
+            target_keywords = [k.strip().lower() for k in watcher.notes.split(',') if len(k.strip()) >= 2]
+
+        matched_keywords = []
+        if target_keywords:
+            for kw in target_keywords:
+                clean_kw = kw.strip().lower()
+                if clean_kw and clean_kw in clean_text:
+                    matched_keywords.append(clean_kw)
+
+        # A. Kriter odaklı arama sonucu:
+        if target_keywords:
+            if matched_keywords:
+                watcher.last_content_hash = new_hash
+                watcher.last_change_detected = now_str
+                watcher.has_update = True
+                kw_str = ", ".join(matched_keywords[:3])
+                msg = f"🎯 [BULUNDU] '{watcher.label}' sayfasında aradığınız '{kw_str}' duyurusu tespit edildi!"
+                return True, msg
+            else:
+                watcher.has_update = False
+                kw_str = ", ".join(target_keywords[:3])
+                msg = f"🔍 [BULUNAMADI] '{watcher.label}' sayfası incelendi: Aradığınız '{kw_str}' kriterleri henüz yayında değil."
+                return False, msg
+
+        # B. Genel sayfa değişiklik kontrolü (Hash tabanlı)
         if not watcher.last_content_hash:
             watcher.last_content_hash = new_hash
             watcher.has_update = False
-            return False, "İlk tarama tamamlandı, sayfa referans tabanı oluşturuldu."
+            return False, f"🔍 '{watcher.label}' sayfası taranıp referans alındı. Henüz yeni bir duyuru yok."
 
-        # İçerik değişmiş mi? (Yeni duyuru / ilan eklendi mi?)
         if new_hash != watcher.last_content_hash:
             watcher.last_content_hash = new_hash
             watcher.last_change_detected = now_str
             watcher.has_update = True
-            return True, f"DİKKAT: '{watcher.label}' sayfasında yeni bir duyuru veya ilan tespit edildi!"
+            return True, f"🎯 [YENİ İLAN] '{watcher.label}' sayfasında yeni bir duyuru / içerik güncellendi!"
         else:
             watcher.has_update = False
-            return False, "Sayfada yeni bir değişiklik yok."
+            return False, f"🔍 [STABİL] '{watcher.label}' sayfasında yeni bir değişiklik yok, sayfa takibimizde."

@@ -87,19 +87,55 @@ class Daily12PMScheduler:
                 })
 
 
-        # 2. Premium Özel Linkleri Tara
+        # 2. Premium Özel Linkleri (URL Watchers) Firestore'dan İndir & Tara
+        loaded_watcher_count = CustomUrlWatcherService.load_watchers_from_firestore()
         updated_custom_links = []
+        watcher_scan_reports = []
+
         for watcher_id, watcher in db.custom_watchers.items():
-            # Eğer simüle edilen test içeriği yoksa doğrudan canlı sayfayı tara
             incoming_content = simulated_html_changes.get(watcher_id, None)
             has_update, message = CustomUrlWatcherService.scan_watcher_12pm(watcher, incoming_content)
+
+            report_item = {
+                "id": watcher.id,
+                "label": watcher.label,
+                "url": watcher.url,
+                "has_update": has_update,
+                "message": message
+            }
+            watcher_scan_reports.append(report_item)
+
             if has_update:
-                updated_custom_links.append({
-                    "id": watcher.id,
-                    "label": watcher.label,
-                    "url": watcher.url,
-                    "message": message
-                })
+                updated_custom_links.append(report_item)
+
+            # A. Eğer kullanıcının FCM tokenı varsa doğrudan kullanıcının cihazına push bildirim gönder
+            target_token = getattr(watcher, 'fcm_token', None)
+            if target_token:
+                try:
+                    title_text = "🎯 Özel Takip: Yeni Duyuru Bulundu!" if has_update else "🔍 Özel Takip Raporu"
+                    FirebaseNotificationService.send_push_notification(
+                        topic=f"watcher_{watcher.id}",
+                        title=title_text,
+                        body=message,
+                        data={"url": watcher.url, "watcher_id": watcher.id}
+                    )
+                except Exception as e:
+                    print(f"Özel link bildirim hatası: {e}")
+
+            # B. Firestore 'custom_watchers' koleksiyonunda tarama sonucunu güncelle
+            try:
+                from services.firebase_service import FirebaseNotificationService
+                if FirebaseNotificationService._initialized:
+                    from firebase_admin import firestore
+                    db_client = firestore.client()
+                    db_client.collection('custom_watchers').document(watcher.id).set({
+                        'last_checked_12pm': f"Sunucu Taraması ({datetime.now().strftime('%H:%M')})",
+                        'last_scanned_result': message,
+                        'has_update': has_update,
+                        'last_scan_timestamp': firestore.SERVER_TIMESTAMP,
+                    }, merge=True)
+            except Exception as e:
+                print(f"Firestore watcher güncelleme hatası: {e}")
 
         # 3. Her taramadan sonra tüm kullanıcılara genel bildirim fırlat: 'Yeni ilanlar listelendi hemen bak'
         try:

@@ -84,15 +84,33 @@ class FirebaseSyncService {
   static Future<void> syncCustomWatchers(List<Map<String, dynamic>> watchersJson) async {
     try {
       final user = _auth.currentUser;
+      final fcmToken = await NotificationService.getToken();
+
+      // A. Kullanıcı kendi profiline kaydeder (yedekleme ve senkronizasyon)
       if (user != null) {
         await _firestore.collection('users').doc(user.uid).set({
           'custom_watchers': watchersJson,
           'custom_watchers_count': watchersJson.length,
+          'fcm_token': fcmToken ?? '',
           'last_watcher_update': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
-        if (kDebugMode) {
-          print("☁️ Firebase: ${watchersJson.length} adet özel link buluta yedeklendi.");
-        }
+      }
+
+      // B. Sunucu Botunun (Cloud Bot) doğrudan erişebileceği 'custom_watchers' global koleksiyonuna yaz
+      for (var w in watchersJson) {
+        final wid = (w['id'] ?? 'w_${DateTime.now().millisecondsSinceEpoch}').toString();
+        await _firestore.collection('custom_watchers').doc(wid).set({
+          ...w,
+          'user_id': user?.uid ?? 'guest_device',
+          'user_email': user?.email ?? '',
+          'fcm_token': fcmToken ?? '',
+          'is_active': w['is_notification_active'] ?? true,
+          'synced_at': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
+      if (kDebugMode) {
+        print("☁️ Firebase: ${watchersJson.length} adet özel link buluta ve sunucu botuna yedeklendi.");
       }
     } catch (e) {
       if (kDebugMode) print("Özel linkleri Firebase'e senkronize etme hatası: $e");
