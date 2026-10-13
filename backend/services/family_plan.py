@@ -26,7 +26,7 @@ class FamilyPlanService:
             owner_name=owner_name,
             price_monthly=39.99,
             invite_code=invite_code,
-            max_extra_members=3,
+            max_extra_members=1,
             members=[],
             is_active=True,
             created_at=datetime.now().strftime("%Y-%m-%d %H:%M")

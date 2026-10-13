@@ -141,7 +141,7 @@ class _OpenAnnouncementsScreenState extends State<OpenAnnouncementsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              "Türkiye genelindeki tüm aktif kamu alımları, sözleşmeli personel ilanları, kadro sayıları ve resmî başvuru kılavuzları bu ekranda toplanır. Sınırsız erişmek ve 3 arkadaşınızı eklemek için 39.99 ₺ Aile Paketi başlatın!",
+              "Türkiye genelindeki tüm aktif kamu alımları, sözleşmeli personel ilanları, kadro sayıları ve resmî başvuru kılavuzları bu ekranda toplanır. Sınırsız erişmek ve 1 arkadaşınızı eklemek için 39.99 ₺ Aile Paketi başlatın!",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.4),
             ),
@@ -152,7 +152,7 @@ class _OpenAnnouncementsScreenState extends State<OpenAnnouncementsScreen> {
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A)),
                 icon: const Icon(Icons.workspace_premium, color: Colors.amber),
-                label: const Text("39.99 ₺ ile Açık İlanları Aç (+3 Arkadaş)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                label: const Text("39.99 ₺ ile Açık İlanları Aç (+1 Arkadaş)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 onPressed: widget.onUpgrade,
               ),
             ),

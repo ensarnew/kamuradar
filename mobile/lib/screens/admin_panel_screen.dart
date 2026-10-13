@@ -74,8 +74,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     },
     {
       "badge": "👑 VIP Fırsat",
-      "title": "👑 KamuRadar VIP: 1 Alana 3 Bedava!",
-      "body": "Aile Planı ile tek abonelikle 4 kişi sınırsız anlık bildirim ve özel web sayfası takibi kazanın.",
+      "title": "👑 KamuRadar VIP: 1 Alana 1 Bedava!",
+      "body": "Aile Planı ile tek abonelikle 2 kişi sınırsız anlık bildirim ve özel web sayfası takibi kazanın.",
       "url": "https://kamuradar.app/vip",
     },
   ];

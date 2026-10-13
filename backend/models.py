@@ -88,7 +88,7 @@ class FamilyPlan(BaseModel):
     owner_name: str
     price_monthly: float = 39.99
     invite_code: str  # 6 haneli kod (Örn: "KMR742")
-    max_extra_members: int = 3  # Kendi + 3 kişi = 4
+    max_extra_members: int = 1  # Kendi + 1 kişi = 2
     members: List[FamilyMember] = []
     is_active: bool = True
     created_at: str

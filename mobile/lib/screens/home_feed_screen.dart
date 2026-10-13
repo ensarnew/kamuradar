@@ -753,7 +753,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   int get _closedCount => _channels.where((c) => c.status == "Kapalı").length;
 
   List<ChannelAlarm> get _filteredChannels {
-    return _channels.where((c) {
+    final list = _channels.where((c) {
       if (_selectedTabIndex == 0 && c.contentType != "ILAN") return false;
       if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
       if (_selectedTabIndex == 2 && c.contentType != "MULAKAT" && c.contentType != "SONUC") return false;
@@ -765,6 +765,19 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       if (_selectedStatus != "Tümü" && c.status != _selectedStatus) return false;
       return true;
     }).toList();
+
+    // 🔓 Ücretsiz kullanıcılar için açık olan 4 sabit ilan en başta gösterilsin
+    if (!_effectiveVip) {
+      list.sort((a, b) {
+        final aFree = _freeAnnouncementIds.contains(a.id);
+        final bFree = _freeAnnouncementIds.contains(b.id);
+        if (aFree && !bFree) return -1;
+        if (!aFree && bFree) return 1;
+        return 0;
+      });
+    }
+
+    return list;
   }
 
   Widget _buildMainTab(int index, String label, IconData icon, int count) {
@@ -1148,9 +1161,9 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    const Text("Yıllık VIP (4 Kişilik Aile Planı)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("Yıllık VIP (2 Kişilik Aile Planı)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 2),
-                    const Text("1 Yıl boyunca tüm ilanlar açık, özel web sitesi nöbetçisi ve 3 arkadaş slotu.", style: TextStyle(color: Colors.white70, fontSize: 10)),
+                    const Text("1 Yıl boyunca tüm ilanlar açık, özel web sitesi nöbetçisi ve 1 arkadaş slotu.", style: TextStyle(color: Colors.white70, fontSize: 10)),
                   ],
                 ),
               ),
@@ -1196,9 +1209,9 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Aylık VIP Aile Paketi (4 Kişi)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A))),
+                        Text("Aylık VIP Aile Paketi (2 Kişi)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A))),
                         SizedBox(height: 2),
-                        Text("Tüm kilitler açık, özel web nöbetçisi, 3 arkadaş dahil.", style: TextStyle(fontSize: 10, color: Colors.black54)),
+                        Text("Tüm kilitler açık, özel web nöbetçisi, 1 arkadaş dahil.", style: TextStyle(fontSize: 10, color: Colors.black54)),
                       ],
                     ),
                     Text("39.99 ₺ / ay", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Color(0xFF0F172A))),
@@ -1253,7 +1266,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
             ),
             SizedBox(height: 12),
             Text(
-              "• 🎬 Kısa bir reklam izleyerek anında +2 ek hak kazanabilirsiniz.\n• 👑 VIP Aile Planı'na geçerek 4 kişi sınırsız ve anlık bildirim alabilirsiniz.",
+              "• 🎬 Kısa bir reklam izleyerek anında +2 ek hak kazanabilirsiniz.\n• 👑 VIP Aile Planı'na geçerek 2 kişi sınırsız ve anlık bildirim alabilirsiniz.",
               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, height: 1.5),
             ),
           ],
@@ -1369,7 +1382,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                   SizedBox(height: 6),
                   Row(children: [Icon(Icons.check_circle, size: 16, color: Colors.green), SizedBox(width: 8), Text("Özel web sayfası izleme (URL Watcher)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))]),
                   SizedBox(height: 6),
-                  Row(children: [Icon(Icons.check_circle, size: 16, color: Colors.green), SizedBox(width: 8), Text("1 Öde, 4 Kişi Kullan (3 Arkadaşını Ücretsiz Ekle)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))]),
+                  Row(children: [Icon(Icons.check_circle, size: 16, color: Colors.green), SizedBox(width: 8), Text("1 Öde, 2 Kişi Kullan (1 Arkadaşını Ücretsiz Ekle)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))]),
                 ],
               ),
             ),
@@ -1392,7 +1405,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     ),
                   );
                 },
-                child: const Text("39.99 ₺ ile Sınırsız VIP Yap (+3 Arkadaş)", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
+                child: const Text("39.99 ₺ ile Sınırsız VIP Yap (+1 Arkadaş)", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
               ),
             ),
             const SizedBox(height: 8),

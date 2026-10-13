@@ -475,7 +475,7 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
               },
               icon: const Icon(Icons.workspace_premium, size: 18),
               label: const Text(
-                "VIP Aile Planına Geç (+3 Arkadaş)",
+                "VIP Aile Planına Geç (+1 Arkadaş)",
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
               ),
             ),

@@ -29,7 +29,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
   String? _generatedInviteCode;
   final TextEditingController _friendCodeController = TextEditingController();
   List<String> _members = [];
-  final int _maxExtraMembers = 3;
+  final int _maxExtraMembers = 1;
   bool _isGroupOwner = false;
   String? _joinedViaCode;
   String? _groupOwnerName;
@@ -365,7 +365,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
         backgroundColor: const Color(0xFF131E33),
         title: const Text("Aboneliği İptal Et?", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         content: const Text(
-          "Aboneliği iptal ederseniz hem sizin hem de davet ettiğiniz 3 arkadaşınızın Premium hakları (özel link takibi ve açık ilan erişimi) sonlanacaktır. Emin misiniz?",
+          "Aboneliği iptal ederseniz hem sizin hem de davet ettiğiniz 1 arkadaşınızın Premium hakları (özel link takibi ve açık ilan erişimi) sonlanacaktır. Emin misiniz?",
           style: TextStyle(fontSize: 13, color: Color(0xFFCBD5E1)),
         ),
         actions: [
@@ -461,7 +461,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             isValid = true;
           } else if (currentMembersRaw.length >= _maxExtraMembers) {
             // KULLANICININ İSTEDİĞİ DOLU UYARISI:
-            errorMessage = "Kod sahibinin ($ownerName) aile planı dolu! (3/3 kişi katılmış).";
+            errorMessage = "Kod sahibinin ($ownerName) aile planı dolu! (1/1 kişi katılmış).";
           } else {
             // Kod sahibinin sırasına yeni üyeyi ekle
             final newMemberMap = {
@@ -583,8 +583,8 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
             _buildFeatureCard(
               icon: Icons.family_restroom,
               iconColor: const Color(0xFF10B981),
-              title: "4 Kişilik Aile Planı",
-              description: "1 Ana Yönetici + 3 Aile Üyesi / Arkadaş aynı abonelikle hiçbir ek ücret ödemeden Premium kullanır.",
+              title: "2 Kişilik Aile Planı",
+              description: "1 Ana Yönetici + 1 Arkadaş aynı abonelikle hiçbir ek ücret ödemeden Premium kullanır.",
             ),
             const SizedBox(height: 8),
 
@@ -655,7 +655,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                             ),
                             const SizedBox(height: 4),
                             const Text(
-                              "Tüm yıl boyunca 54 ilanın tamamı açık, 4 kişilik aile planı ve özel web sitesi takibi.",
+                              "Tüm yıl boyunca 54 ilanın tamamı açık, 2 kişilik aile planı ve özel web sitesi takibi.",
                               style: TextStyle(fontSize: 11, color: Color(0xFFCBD5E1)),
                             ),
                           ],
@@ -711,7 +711,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                             ),
                             SizedBox(height: 4),
                             Text(
-                              "Aylık yenilenir. 54 ilanın tamamı açık, sınırsız bildirim, 4 kişilik aile planı ve özel site takibi.",
+                              "Aylık yenilenir. 54 ilanın tamamı açık, sınırsız bildirim, 2 kişilik aile planı ve özel site takibi.",
                               style: TextStyle(fontSize: 11, color: Color(0xFFCBD5E1)),
                             ),
                           ],
@@ -783,7 +783,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      const Text("3 Arkadaşınızla Paylaşacağınız Özel Davet Kodu:", style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11)),
+                      const Text("1 Arkadaşınızla Paylaşacağınız Özel Davet Kodu:", style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -829,7 +829,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                 ),
 
                 const SizedBox(height: 16),
-                const Text("Grup Kontenjanı (Siz + 3 Kişi)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                const Text("Grup Kontenjanı (Siz + 1 Kişi)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 8),
                 _buildSlot(
                   "1. ${(FirebaseAuth.instance.currentUser?.displayName != null && FirebaseAuth.instance.currentUser!.displayName!.isNotEmpty) ? FirebaseAuth.instance.currentUser!.displayName! : (FirebaseAuth.instance.currentUser?.email != null ? FirebaseAuth.instance.currentUser!.email!.split('@')[0] : 'Yönetici')} (Siz - Yönetici)",
@@ -893,7 +893,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text("Grup Kontenjanı (Yönetici + 3 Kişi)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                const Text("Grup Kontenjanı (Yönetici + 1 Kişi)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 8),
                 _buildSlot(
                   "1. ${_groupOwnerName ?? 'Grup Yöneticisi'} (Yönetici)",
