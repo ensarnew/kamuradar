@@ -240,4 +240,13 @@ class NotificationService {
       if (kDebugMode) print("Abonelikten çıkma hatası: $e");
     }
   }
+
+  // Cihazın FCM Token'ını döndürür
+  static Future<String?> getToken() async {
+    try {
+      return await _messaging.getToken();
+    } catch (e) {
+      return null;
+    }
+  }
 }
