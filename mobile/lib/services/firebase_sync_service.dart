@@ -352,63 +352,58 @@ class FirebaseSyncService {
       final cleanQuery = query.trim().toLowerCase();
       final Map<String, Map<String, dynamic>> userMap = {};
 
-      void addDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-        final data = doc.data() ?? {};
-        userMap[doc.id] = {
-          'uid': doc.id,
-          'email': data['email'] ?? 'E-posta Yok',
-          'display_name': data['display_name'] ?? 'İsimsiz Üye',
-          'is_vip': data['is_vip'] == true,
-          'vip_plan': data['vip_plan'] ?? 'free',
-          'last_active': data['last_active'],
-        };
+      // 1. Strateji: Backend Admin API'den tüm gerçek kullanıcıları çek (Firebase Admin yetkisiyle eksiksiz)
+      try {
+        final res = await http.get(
+          Uri.parse("https://kamuradar.onrender.com/api/admin/users"),
+        ).timeout(const Duration(seconds: 7));
+        if (res.statusCode == 200) {
+          final List<dynamic> list = jsonDecode(utf8.decode(res.bodyBytes));
+          for (var item in list) {
+            final uid = (item['uid'] ?? '').toString();
+            final email = (item['email'] ?? '').toString().toLowerCase();
+            final name = (item['display_name'] ?? '').toString().toLowerCase();
+            if (cleanQuery.isEmpty || email.contains(cleanQuery) || name.contains(cleanQuery) || uid.toLowerCase().contains(cleanQuery)) {
+              userMap[uid] = Map<String, dynamic>.from(item);
+            }
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) print("Backend admin users listesi notu: $e");
       }
 
-      // 1. Strateji: Doğrudan e-posta veya UID tam eşleşme araması
-      if (cleanQuery.isNotEmpty) {
+      // 2. Strateji: Doğrudan e-posta veya UID tam eşleşme araması (Firestore)
+      if (cleanQuery.isNotEmpty && userMap.isEmpty) {
         try {
           final directEmailSnap = await _firestore.collection('users').where('email', isEqualTo: cleanQuery).get();
           for (var doc in directEmailSnap.docs) {
-            addDoc(doc);
-          }
-
-          final directDoc = await _firestore.collection('users').doc(cleanQuery).get();
-          if (directDoc.exists) {
-            addDoc(directDoc);
+            final data = doc.data();
+            userMap[doc.id] = {
+              'uid': doc.id,
+              'email': data['email'] ?? 'E-posta Yok',
+              'display_name': data['display_name'] ?? 'İsimsiz Üye',
+              'is_vip': data['is_vip'] == true,
+              'vip_plan': data['vip_plan'] ?? 'free',
+              'last_active': data['last_active'],
+            };
           }
         } catch (_) {}
       }
 
-      // 2. Strateji: Genel listeleme ve büyük/küçük harf duyarsız arama
-      try {
-        final snap = await _firestore.collection('users').limit(150).get();
-        for (var doc in snap.docs) {
-          final data = doc.data();
-          final email = (data['email'] ?? '').toString().toLowerCase();
-          final name = (data['display_name'] ?? '').toString().toLowerCase();
-          final uid = doc.id.toLowerCase();
-
-          if (cleanQuery.isEmpty || email.contains(cleanQuery) || name.contains(cleanQuery) || uid.contains(cleanQuery)) {
-            addDoc(doc);
-          }
-        }
-      } catch (e) {
-        if (kDebugMode) print("Firestore users koleksiyonu listeleme uyarısı: $e");
-      }
-
-      // 3. Strateji: Mevcut oturum açmış kullanıcı varsa ve henüz listede yoksa ekle
+      // 3. Strateji: Mevcut oturum açmış kullanıcı varsa ve henüz listede yoksa gerçek VIP durumuyla ekle
       final currentAuthUser = _auth.currentUser;
       if (currentAuthUser != null) {
         final curEmail = (currentAuthUser.email ?? '').toLowerCase();
         final curName = (currentAuthUser.displayName ?? '').toLowerCase();
         if (cleanQuery.isEmpty || curEmail.contains(cleanQuery) || curName.contains(cleanQuery) || currentAuthUser.uid.toLowerCase().contains(cleanQuery)) {
           if (!userMap.containsKey(currentAuthUser.uid)) {
+            final isCurVip = await isVip();
             userMap[currentAuthUser.uid] = {
               'uid': currentAuthUser.uid,
               'email': currentAuthUser.email ?? 'Aktif Oturum',
               'display_name': currentAuthUser.displayName ?? 'Yönetici Hesabı',
-              'is_vip': true,
-              'vip_plan': 'yearly_vip',
+              'is_vip': isCurVip,
+              'vip_plan': isCurVip ? 'vip_family_plan' : 'free',
               'last_active': 'Şimdi Aktif',
             };
           }

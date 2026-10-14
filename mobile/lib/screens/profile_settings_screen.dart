@@ -27,6 +27,23 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   int _usedNotifications = 1;
   int _versionTapCount = 0;
   DateTime? _lastTapTime;
+  bool _isVip = false;
+  bool get _effectiveVip => widget.isVip || _isVip;
+
+  @override
+  void didUpdateWidget(ProfileSettingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isVip != oldWidget.isVip) {
+      setState(() => _isVip = widget.isVip);
+    }
+  }
+
+  Future<void> _checkVipStatus() async {
+    final vip = await FirebaseSyncService.isVip();
+    if (mounted && vip != _isVip) {
+      setState(() => _isVip = vip);
+    }
+  }
 
   void _handleVersionTap() {
     final now = DateTime.now();
@@ -88,14 +105,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               foregroundColor: Colors.amber,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            onPressed: () {
+            onPressed: () async {
               final pwd = controller.text.trim();
               if (pwd == "Ensarakyr110823.AZRA") {
                 Navigator.pop(ctx);
-                Navigator.push(
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const AdminPanelScreen()),
                 );
+                if (mounted) {
+                  await _checkVipStatus();
+                  await _loadAlarmStats();
+                  widget.onUpgradeVip?.call();
+                }
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -126,6 +148,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _isVip = widget.isVip;
+    _checkVipStatus();
     _loadAlarmStats();
   }
 
@@ -133,6 +157,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final activeIds = await CacheService.getActiveAlarms();
     final bonus = await CacheService.getBonusNotifications();
     final used = await CacheService.getUsedNotifications();
+    await _checkVipStatus();
     if (mounted) {
       setState(() {
         _activeAlarmCount = activeIds.length;
@@ -308,15 +333,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: widget.isVip ? Colors.amber.shade100 : Colors.blue.shade50,
+                                color: _effectiveVip ? Colors.amber.shade100 : Colors.blue.shade50,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                widget.isVip ? "VIP" : "ÜCRETSİZ",
+                                _effectiveVip ? "VIP" : "ÜCRETSİZ",
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w900,
-                                  color: widget.isVip ? Colors.amber.shade900 : AppTheme.primaryBlue,
+                                  color: _effectiveVip ? Colors.amber.shade900 : AppTheme.primaryBlue,
                                 ),
                               ),
                             ),
@@ -377,7 +402,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   // 2. Uygulama Bildirim Kotası (Reklamla Yükselen Aylık Bildirim Hakkı)
   Widget _buildNotificationQuotaSection() {
-    final ratio = widget.isVip ? 1.0 : (_usedNotifications / _totalAllowedNotifications).clamp(0.0, 1.0);
+    final ratio = _effectiveVip ? 1.0 : (_usedNotifications / _totalAllowedNotifications).clamp(0.0, 1.0);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -421,11 +446,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   children: [
                     const Text("Kullanılan Bildirim:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
                     Text(
-                      widget.isVip ? "Sınırsız (VIP)" : "$_usedNotifications / $_totalAllowedNotifications Hak ($_remainingNotifications Kaldı)",
+                      _effectiveVip ? "Sınırsız (VIP)" : "$_usedNotifications / $_totalAllowedNotifications Hak ($_remainingNotifications Kaldı)",
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w900,
-                        color: widget.isVip ? const Color(0xFF10B981) : const Color(0xFF38BDF8),
+                        color: _effectiveVip ? const Color(0xFF10B981) : const Color(0xFF38BDF8),
                       ),
                     ),
                   ],
@@ -438,13 +463,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     minHeight: 8,
                     backgroundColor: const Color(0xFF1E2D4A),
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      widget.isVip ? AppTheme.amberGold : (ratio >= 1.0 ? AppTheme.urgentRed : const Color(0xFF38BDF8)),
+                      _effectiveVip ? AppTheme.amberGold : (ratio >= 1.0 ? AppTheme.urgentRed : const Color(0xFF38BDF8)),
                     ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  widget.isVip
+                  _effectiveVip
                       ? "👑 VIP hesabınızla tüm alım ve sınav bildirimlerini sınırsız ve reklamsız alırsınız."
                       : "Ücretsiz hesaplara ayda 10 adet bildirim alma hakkı tanınır. Kısa bir reklam izleyerek anında +2 bildirim hakkı kazanabilirsiniz.",
                   style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
@@ -456,7 +481,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           const SizedBox(height: 12),
 
           // Reklamla +2 Bildirim Hakkı Kazan Butonu
-          if (!widget.isVip)
+          if (!_effectiveVip)
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(

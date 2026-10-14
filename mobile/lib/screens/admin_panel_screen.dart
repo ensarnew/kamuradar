@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
 import '../services/firebase_sync_service.dart';
 import 'home_feed_screen.dart';
@@ -318,6 +320,29 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           content: Text(newStatus
               ? "👑 Kullanıcıya VIP Aile Planı başarıyla tanımlandı!"
               : "Kullanıcının VIP üyeliği sonlandırıldı."),
+        ),
+      );
+      _searchUsers();
+    }
+  }
+
+  // Bu Cihazı / Kendimi Tek Tıkla Anında VIP Yap
+  Future<void> _makeCurrentDeviceVip() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool("cache_is_vip", true);
+    await prefs.setString("cache_vip_plan", "vip_family_plan");
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseSyncService.setUserVipByAdmin(user.uid, true);
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppTheme.successGreen,
+          duration: Duration(seconds: 4),
+          content: Text("👑 Bu cihaz başarıyla VIP yapıldı! Tüm kilitler açıldı."),
         ),
       );
       _searchUsers();
@@ -643,6 +668,43 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     style: TextStyle(fontSize: 11, color: Colors.black54),
                   ),
                   const SizedBox(height: 12),
+                  // Tek Tıkla Bu Cihazı / Kendimi VIP Yap Kartı
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.amber.shade400, width: 1.5),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.stars, color: Colors.amber, size: 28),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Bu Cihazı VIP Yap (Hemen Aç)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A))),
+                              SizedBox(height: 2),
+                              Text("Kendi cihazınızı ve hesabınızı tek tıkla anında sınırsız VIP yapar.", style: TextStyle(fontSize: 10, color: Colors.black54)),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber.shade800,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: _makeCurrentDeviceVip,
+                          child: const Text("VIP Ol", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                        ),
+                      ],
+                    ),
+                  ),
                   Row(
                     children: [
                       Expanded(
@@ -680,7 +742,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       ),
                     )
                   else
-                    ..._searchResults.take(10).map((user) => _buildUserCard(user)),
+                    ..._searchResults.map((user) => _buildUserCard(user)),
                 ],
               ),
             ),

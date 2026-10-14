@@ -357,3 +357,31 @@ def admin_set_user_vip(req: SetUserVipRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/admin/users")
+def admin_list_users():
+    """
+    Tüm kayıtlı kullanıcıları ve gerçek VIP durumlarını Firestore'dan çeker.
+    Admin paneli için eksiksiz liste döndürür.
+    """
+    from services.firebase_service import FirebaseNotificationService
+    FirebaseNotificationService.initialize()
+    try:
+        from firebase_admin import firestore
+        db_client = firestore.client()
+        docs = db_client.collection('users').stream()
+        user_list = []
+        for doc in docs:
+            data = doc.to_dict() or {}
+            user_list.append({
+                "uid": doc.id,
+                "email": data.get("email") or "E-posta Yok",
+                "display_name": data.get("display_name") or "İsimsiz Üye",
+                "is_vip": data.get("is_vip", False) == True,
+                "vip_plan": data.get("vip_plan", "free"),
+                "last_active": "Aktif",
+                "invite_code": data.get("invite_code", ""),
+            })
+        return user_list
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

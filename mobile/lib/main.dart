@@ -156,7 +156,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       ProfileSettingsScreen(
         isVip: _isVip,
-        onUpgradeVip: _upgradeToVip,
+        onUpgradeVip: () async {
+          await _loadVipStatus();
+        },
       ),
     ];
 
@@ -171,11 +173,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           indicatorColor: const Color(0xFF1E3A8A),
           backgroundColor: const Color(0xFF0F172A),
           elevation: 2,
-          onDestinationSelected: (idx) {
+          onDestinationSelected: (idx) async {
             setState(() {
               _currentIndex = idx;
             });
-            _loadVipStatus();
+            await _loadVipStatus();
           },
           destinations: const [
             NavigationDestination(
