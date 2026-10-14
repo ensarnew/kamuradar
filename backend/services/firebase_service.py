@@ -89,16 +89,56 @@ class FirebaseNotificationService:
 
         if cls._initialized and FIREBASE_INSTALLED:
             try:
+                # Android için yüksek öncelikli bildirim ve ses ayarları
+                android_config = messaging.AndroidConfig(
+                    priority="high",
+                    notification=messaging.AndroidNotification(
+                        channel_id="kamuradar_alerts_channel",
+                        default_sound=True,
+                        priority="high",
+                        default_vibrate_timings=True,
+                        click_action=data.get("click_action", "FLUTTER_NOTIFICATION_CLICK")
+                    )
+                )
+
+                # iOS için ses ve badge ayarları
+                apns_config = messaging.APNSConfig(
+                    payload=messaging.APNSPayload(
+                        aps=messaging.Aps(
+                            sound="default",
+                            badge=1,
+                            content_available=True
+                        )
+                    )
+                )
+
                 message = messaging.Message(
                     notification=messaging.Notification(
                         title=title,
                         body=body,
                     ),
-                    data=data,
+                    data={str(k): str(v) for k, v in data.items()},
+                    android=android_config,
+                    apns=apns_config,
                     topic=topic
                 )
                 response = messaging.send(message)
                 logger.info(f"🚀 Firebase bildirimi gönderildi [{topic}]: {response}")
+
+                # Canlı Firestore 'notifications' koleksiyonuna yazarak açık uygulamalara anında pop-up fırlat
+                try:
+                    from firebase_admin import firestore
+                    db_client = firestore.client()
+                    db_client.collection('notifications').add({
+                        'title': title,
+                        'body': body,
+                        'created_at': firestore.SERVER_TIMESTAMP,
+                        'topic': topic,
+                        'data': data
+                    })
+                except Exception as fe:
+                    logger.warning(f"Firestore notifications koleksiyonu yazma notu: {fe}")
+
                 return {
                     "success": True,
                     "status": "sent",
@@ -131,23 +171,39 @@ class FirebaseNotificationService:
         title: str,
         organization: str,
         official_url: str,
-        category: str = "genel"
+        category: str = "genel",
+        announcement_id: str = None
     ) -> Dict[str, Any]:
         """
         Bugün başvuru tarihi başlayan ilan için alarm bildirimini fırlatır.
         """
-        topic = f"channel_{category.lower()}"
         notif_title = f"🔔 {organization}: Başvurular BUGÜN Başladı!"
         notif_body = f"{title} başvuruları resmen açıldı. Resmî başvuru adresi için tıklayın."
         
+        # 1. Bu ilanın zilini açmış kullanıcılara özel topic (topic_annId)
+        if announcement_id:
+            cls.send_push_notification(
+                topic=f"topic_{announcement_id}",
+                title=notif_title,
+                body=notif_body,
+                data={
+                    "url": official_url,
+                    "organization": organization,
+                    "type": "announcement_opened",
+                    "announcement_id": announcement_id
+                }
+            )
+
+        # 2. Genel kitleye gönder (kamuradar_all)
         return cls.send_push_notification(
-            topic=topic,
+            topic="kamuradar_all",
             title=notif_title,
             body=notif_body,
             data={
                 "url": official_url,
                 "organization": organization,
-                "type": "announcement_opened"
+                "type": "announcement_opened",
+                "announcement_id": announcement_id or ""
             }
         )
 

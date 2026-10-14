@@ -297,7 +297,7 @@ class AdminBroadcastNotificationRequest(BaseModel):
     title: str
     body: str
     promo_url: Optional[str] = None
-    target_topic: str = "all_users"
+    target_topic: str = "kamuradar_all"
 
 @app.post("/api/admin/broadcast-notification")
 def send_admin_broadcast_notification(req: AdminBroadcastNotificationRequest):

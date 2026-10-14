@@ -88,7 +88,8 @@ class Daily12PMScheduler:
                         title=ann.title,
                         organization=ann.organization,
                         official_url=ann.official_url,
-                        category=cat_val
+                        category=cat_val,
+                        announcement_id=ann_id
                     )
                     notifications_sent.append({
                         "announcement_id": ann_id,
