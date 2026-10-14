@@ -62,6 +62,15 @@ class FirebaseNotificationService:
             logger.info(f"ℹ️ '{cred_path}' bulunamadı. Bildirimler konsola simüle edilecek.")
             return False
 
+    @staticmethod
+    def sanitize_topic(topic: str) -> str:
+        import re
+        tr_map = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+        cleaned = topic.translate(tr_map).lower()
+        cleaned = re.sub(r'[^a-zA-Z0-9-_.~%]', '_', cleaned)
+        cleaned = re.sub(r'_+', '_', cleaned).strip('_')
+        return cleaned[:900] or "all_users"
+
     @classmethod
     def send_push_notification(
         cls,
@@ -75,6 +84,7 @@ class FirebaseNotificationService:
         tüm kullanıcılara anında bildirim gönderir.
         """
         data = data or {}
+        topic = cls.sanitize_topic(topic)
         cls.initialize()
 
         if cls._initialized and FIREBASE_INSTALLED:
