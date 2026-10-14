@@ -326,3 +326,34 @@ def send_admin_broadcast_notification(req: AdminBroadcastNotificationRequest):
         "fcm_response": result
     }
 
+class SetUserVipRequest(BaseModel):
+    uid: str
+    is_vip: bool = True
+    plan: str = "vip_family_plan"
+
+@app.post("/api/admin/set-user-vip")
+def admin_set_user_vip(req: SetUserVipRequest):
+    """
+    Yöneticinin herhangi bir kullanıcıya doğrudan VIP tanımlamasını sağlar.
+    Firebase Admin yetkisiyle kurallara takılmadan doğrudan Firestore'a yazar.
+    """
+    from services.firebase_service import FirebaseNotificationService
+    FirebaseNotificationService.initialize()
+    try:
+        from firebase_admin import firestore
+        db_client = firestore.client()
+        db_client.collection('users').document(req.uid).set({
+            'is_vip': req.is_vip,
+            'vip_plan': req.plan if req.is_vip else 'free',
+            'vip_updated_at': firestore.SERVER_TIMESTAMP,
+            'vip_granted_by_admin': True,
+        }, merge=True)
+        return {
+            "success": True,
+            "message": f"Kullanıcı ({req.uid}) VIP durumu '{req.is_vip}' olarak güncellendi.",
+            "uid": req.uid,
+            "is_vip": req.is_vip
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

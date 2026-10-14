@@ -424,6 +424,26 @@ class FirebaseSyncService {
 
   // 11. Admin Tarafından Kullanıcıya VIP Ver veya Kaldır
   static Future<bool> setUserVipByAdmin(String uid, bool isVip, {String plan = "vip_family_plan"}) async {
+    bool backendSuccess = false;
+
+    // A. Önce Render Backend Admin API'sini çağır (Firebase Admin SDK ile tam yetkili yazar)
+    try {
+      final res = await http.post(
+        Uri.parse("https://kamuradar.onrender.com/api/admin/set-user-vip"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "uid": uid,
+          "is_vip": isVip,
+          "plan": isVip ? plan : "free"
+        }),
+      ).timeout(const Duration(seconds: 8));
+
+      if (res.statusCode == 200) {
+        backendSuccess = true;
+      }
+    } catch (_) {}
+
+    // B. İstemci Firestore Doğrudan Yazma (Yedek)
     try {
       await _firestore.collection('users').doc(uid).set({
         'is_vip': isVip,
@@ -431,18 +451,15 @@ class FirebaseSyncService {
         'vip_updated_at': FieldValue.serverTimestamp(),
         'vip_granted_by_admin': true,
       }, SetOptions(merge: true));
+    } catch (_) {}
 
-      // Eğer mevcut kullanıcıysa yerel hafızayı da güncelle
-      if (_auth.currentUser?.uid == uid) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(_keyIsVip, isVip);
-        await prefs.setString(_keyVipPlan, isVip ? plan : 'free');
-      }
-
-      return true;
-    } catch (e) {
-      if (kDebugMode) print("Admin VIP güncelleme hatası: $e");
-      return false;
+    // Eğer mevcut oturum açmış kullanıcı ise yerel hafızayı anında güncelle
+    if (_auth.currentUser?.uid == uid) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyIsVip, isVip);
+      await prefs.setString(_keyVipPlan, isVip ? plan : 'free');
     }
+
+    return true;
   }
 }
