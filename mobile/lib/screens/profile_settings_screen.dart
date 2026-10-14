@@ -112,7 +112,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
   int _bonusNotifications = 0;
-  final int _baseNotificationLimit = 3;
+  final int _baseNotificationLimit = 10;
 
   // Uygulama Genel Ayarları (App Settings)
   bool _dailyScanNotification = true;
@@ -446,7 +446,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 Text(
                   widget.isVip
                       ? "👑 VIP hesabınızla tüm alım ve sınav bildirimlerini sınırsız ve reklamsız alırsınız."
-                      : "Ücretsiz hesaplara ayda 3 adet bildirim alma hakkı tanınır. Kısa bir reklam izleyerek anında +2 bildirim hakkı kazanabilirsiniz.",
+                      : "Ücretsiz hesaplara ayda 10 adet bildirim alma hakkı tanınır. Kısa bir reklam izleyerek anında +2 bildirim hakkı kazanabilirsiniz.",
                   style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
                 ),
               ],

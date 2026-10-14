@@ -175,6 +175,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             setState(() {
               _currentIndex = idx;
             });
+            _loadVipStatus();
           },
           destinations: const [
             NavigationDestination(

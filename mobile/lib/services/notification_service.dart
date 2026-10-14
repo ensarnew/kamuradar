@@ -196,7 +196,7 @@ class NotificationService {
       if (!isVip) {
         final used = await CacheService.incrementUsedNotifications();
         final bonus = await CacheService.getBonusNotifications();
-        final totalAllowed = 3 + bonus;
+        final totalAllowed = 10 + bonus;
         final remaining = (totalAllowed - used).clamp(0, 9999);
 
         // Kalan hak tam 1 olduğunda uyarı callback'ini tetikle

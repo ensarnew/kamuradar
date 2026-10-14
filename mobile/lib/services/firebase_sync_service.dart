@@ -16,11 +16,32 @@ class FirebaseSyncService {
   static const String _keyIsGoogleLoggedIn = "is_google_logged_in";
   static const String _keyIsGuest = "is_guest_mode";
 
-  // 1. VIP Durumunu Oku (Önce Yerel Hızlı Önbellek)
+  // 1. VIP Durumunu Oku (Önce Yerel Hızlı Önbellek, Oturum Açıksa Buluttan Doğrula)
   static Future<bool> isVip() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool(_keyIsVip) ?? false;
+      bool localVip = prefs.getBool(_keyIsVip) ?? false;
+
+      // Kullanıcının oturumu varsa Firestore'dan güncel VIP durumunu kontrol et
+      final user = _auth.currentUser;
+      if (user != null) {
+        try {
+          final doc = await _firestore.collection('users').doc(user.uid).get();
+          if (doc.exists && doc.data() != null) {
+            final data = doc.data()!;
+            final bool cloudVip = data['is_vip'] == true;
+            if (cloudVip != localVip) {
+              localVip = cloudVip;
+              await prefs.setBool(_keyIsVip, cloudVip);
+              if (data['vip_plan'] != null) {
+                await prefs.setString(_keyVipPlan, data['vip_plan'].toString());
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      return localVip;
     } catch (_) {
       return false;
     }

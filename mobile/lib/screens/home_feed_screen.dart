@@ -222,18 +222,40 @@ class HomeFeedScreen extends StatefulWidget {
 class _HomeFeedScreenState extends State<HomeFeedScreen> {
   bool _isUserVip = false;
   bool get _effectiveVip => widget.isVip || _isUserVip;
-  final int _baseNotificationLimit = 3;
+  final int _baseNotificationLimit = 10;
   int _bonusNotifications = 0;
   int _usedNotifications = 0;
   bool _isLoadingLive = false;
   bool _isOfflineMode = false;
+  final Set<String> _unlockedWithAdsChannelIds = {};
 
   int get _totalAllowedNotifications => _baseNotificationLimit + _bonusNotifications;
   int get _remainingNotifications => (_totalAllowedNotifications - _usedNotifications).clamp(0, _totalAllowedNotifications);
 
   @override
+  void didUpdateWidget(HomeFeedScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isVip != oldWidget.isVip) {
+      setState(() {
+        _isUserVip = widget.isVip;
+      });
+    }
+  }
+
+  Future<void> _checkVipStatus() async {
+    final vip = await FirebaseSyncService.isVip();
+    if (mounted && vip != _isUserVip) {
+      setState(() {
+        _isUserVip = vip;
+      });
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
+    _isUserVip = widget.isVip;
+    _checkVipStatus();
     _loadCachedAlarms();
     _listenToFirestoreAnnouncements();
     _syncWithLiveServer();
@@ -550,6 +572,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         _freeIdsInitialized = true;
       }
 
+      final adUnlocked = prefs.getStringList("unlocked_with_ads_ids");
+      if (adUnlocked != null && adUnlocked.isNotEmpty) {
+        _unlockedWithAdsChannelIds.addAll(adUnlocked);
+      }
+
       // Tarihe göre ilan durumlarını sınıflandır:
       // Son başvuru tarihi geçmiş olanlar kesinlikle 'Kapalı', henüz başlamamışlar 'Yakında',
       // süresi devam edenler ise 'Açık' olarak değerlendirilir.
@@ -748,6 +775,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
   bool _isChannelLocked(ChannelAlarm ch) {
     if (_effectiveVip) return false;
+    if (_unlockedWithAdsChannelIds.contains(ch.id)) return false;
     return !_freeAnnouncementIds.contains(ch.id);
   }
 
@@ -1128,8 +1156,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     );
   }
 
-  // 👑 VIP & PREMIUM İLAN KİLİDİ POP-UP'I (3 PAKETLİ)
-  void _showPremiumUpgradePopUp() {
+  // 👑 VIP & PREMIUM İLAN KİLİDİ POP-UP'I (3 PAKETLİ + 2 REKLAM İZLEYEREK AÇ SEÇENEĞİ)
+  void _showPremiumUpgradePopUp({ChannelAlarm? targetChannel}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1157,17 +1185,55 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               child: const Text("👑 VIP ÖZEL İLAN & SINAV KİLİDİ", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF78350F))),
             ),
             const SizedBox(height: 8),
-            const Text(
-              "Tüm İlanların Kilidini Açın",
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+            Text(
+              targetChannel != null ? "${targetChannel.organization} İlan Kilidini Açın" : "Tüm İlanların Kilidini Açın",
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
             ),
             const SizedBox(height: 6),
             Text(
-              "İlk 4 ilan ücretsizdir. Bu ilan ve diğer 50 güncel kamu alımını görmek, anlık alarmlar ve özel web sitesi nöbetçisi için paket seçin.",
+              targetChannel != null
+                  ? "Bu ilanı 2 kısa reklam izleyerek hemen açabilir veya VIP Aile Planı ile sınırsız erişebilirsiniz."
+                  : "İlk 4 ilan ücretsizdir. VIP Aile Planı ile tüm ilanlar, anlık alarmlar ve özel web sitesi nöbetçisine sınırsız erişin.",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600, height: 1.4),
             ),
             const SizedBox(height: 18),
+
+            // Seçenek A: 2 Reklam İzleyerek Bu İlanın Kilidini Aç (Ücretsiz alternatif)
+            if (targetChannel != null) ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: const Icon(Icons.play_circle_fill, color: Colors.white, size: 20),
+                  label: const Text(
+                    "🎬 2 Reklam İzle (Bu İlanı Aç)",
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _unlockWithTwoAds(targetChannel);
+                  },
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Row(
+                children: [
+                  Expanded(child: Divider()),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: Text("VEYA SINIRSIZ VIP ALIN", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  ),
+                  Expanded(child: Divider()),
+                ],
+              ),
+              const SizedBox(height: 14),
+            ],
 
             // 1. Paket: Yıllık VIP (En Popüler)
             InkWell(
@@ -1178,7 +1244,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 );
                 final success = await InAppPurchaseService.instance.buyProduct(InAppPurchaseService.yearlyVipId);
                 if (!success) {
-                  // Fallback: Aile Planı Ekranına yönlendir
                   if (mounted) {
                     Navigator.push(
                       context,
@@ -1236,7 +1301,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 );
                 final success = await InAppPurchaseService.instance.buyProduct(InAppPurchaseService.monthlyVipId);
                 if (!success) {
-                  // Fallback: Aile Planı Ekranına yönlendir
                   if (mounted) {
                     Navigator.push(
                       context,
@@ -1280,11 +1344,123 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text("Şimdilik Ücretsiz İlk 4 İlanla Devam Et", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+              child: const Text("Şimdilik Kapat", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// 🎬 2 Reklam İzleyerek İlan Kilidini Açma Motoru
+  void _unlockWithTwoAds(ChannelAlarm channel) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("🎬 1. Reklam yükleniyor (1/2)... Lütfen sonuna kadar izleyin."),
+        duration: Duration(seconds: 3),
+      ),
+    );
+
+    AdService.instance.showRewardedAd(
+      onRewardEarned: () {
+        // 1. Reklam tamamlandı, kullanıcıya bilgi ver ve 2. reklamı aç
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogCtx) => AlertDialog(
+            backgroundColor: const Color(0xFF131E33),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 24),
+                SizedBox(width: 8),
+                Text("1. Reklam Tamamlandı (1/2)", style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: const Text(
+              "İlanın kilidini açmak için lütfen 2. kısa reklamı da izleyin.",
+              style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+            ),
+            actions: [
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF22C55E),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.play_circle_fill, size: 16),
+                label: const Text("2. Reklamı İzle (Kilidi Aç)"),
+                onPressed: () {
+                  Navigator.pop(dialogCtx);
+                  AdService.instance.showRewardedAd(
+                    onRewardEarned: () async {
+                      if (!mounted) return;
+                      // Her 2 reklam da izlendi! İlanı yerel olarak aç
+                      final prefs = await SharedPreferences.getInstance();
+                      final currentList = prefs.getStringList("unlocked_with_ads_ids") ?? [];
+                      if (!currentList.contains(channel.id)) {
+                        currentList.add(channel.id);
+                        await prefs.setStringList("unlocked_with_ads_ids", currentList);
+                      }
+                      setState(() {
+                        _unlockedWithAdsChannelIds.add(channel.id);
+                      });
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: const Color(0xFF22C55E),
+                          content: Text("🎉 Tebrikler! '${channel.organization}' ilanı kilidi açıldı."),
+                        ),
+                      );
+
+                      // Kilidi açılan ilanın detay sayfasını hemen aç
+                      AnnouncementDetailSheet.show(
+                        context,
+                        AnnouncementDetailData(
+                          id: channel.id,
+                          organization: channel.organization,
+                          title: channel.title,
+                          position: channel.position,
+                          city: channel.city,
+                          date: channel.date,
+                          quota: channel.quota,
+                          applicationPlace: channel.applicationPlace,
+                          employmentType: channel.employmentType,
+                          applicationType: channel.applicationType,
+                          requirements: channel.requirements,
+                          officialUrl: channel.officialUrl,
+                          status: channel.status,
+                          logoIcon: channel.logoIcon,
+                          category: channel.category,
+                          contentType: channel.contentType,
+                          educationLevel: channel.educationLevel,
+                          kpssStatus: channel.kpssStatus,
+                          examDate: channel.examDate,
+                        ),
+                        isVip: true, // Reklamla açıldığı için VIP gibi göster
+                      );
+                    },
+                    onFailure: (err) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(backgroundColor: const Color(0xFFEF4444), content: Text(err)),
+                        );
+                      }
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+      onFailure: (err) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(backgroundColor: const Color(0xFFEF4444), content: Text(err)),
+          );
+        }
+      },
     );
   }
 
@@ -1424,7 +1600,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
             Text(
               _isUserVip
                   ? "VIP üyeliğiniz sayesinde tüm kamu alımı ve sınav bildirimleri telefonunuza sınırsız olarak iletilir."
-                  : "Ücretsiz hesaplarda ayda 3 adet anlık bildirim alma hakkınız vardır. Reklam izleyerek anında +2 ek bildirim hakkı kazanabilirsiniz!",
+                  : "Ücretsiz hesaplarda ayda 10 adet anlık bildirim alma hakkınız vardır. Reklam izleyerek anında +2 ek bildirim hakkı kazanabilirsiniz!",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.4),
             ),
@@ -2151,7 +2327,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                             color: const Color(0xFF091122).withValues(alpha: 0.85),
                             child: InkWell(
                               onTap: () {
-                                _showPremiumUpgradePopUp();
+                                _showPremiumUpgradePopUp(targetChannel: ch);
                               },
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
