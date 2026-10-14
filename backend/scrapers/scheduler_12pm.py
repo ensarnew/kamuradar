@@ -39,18 +39,28 @@ class Daily12PMScheduler:
         simulated_html_changes = simulated_html_changes or {}
 
         # 1. Genel Kamu Kaynaklarını Tara & Günü Bitenleri Otomatik Temizle
-        purged_expired_count = db.purge_expired_announcements(today_str=check_date)
+        try:
+            purged_expired_count = db.purge_expired_announcements(today_str=check_date)
+        except Exception as e:
+            print(f"Purge hatası: {e}")
 
-        new_jnd = OfficialSourcesScraper.scrape_jandarma()
-        new_msu = OfficialSourcesScraper.scrape_msu()
-        new_osym = OfficialSourcesScraper.scrape_osym()
-        new_rg = OfficialSourcesScraper.scrape_resmi_gazete()
-        new_iskur = OfficialSourcesScraper.scrape_iskur_kamu()
-        new_kk = OfficialSourcesScraper.scrape_kariyer_kapisi()
-
-        all_new = new_jnd + new_msu + new_osym + new_rg + new_iskur + new_kk
-        for item in all_new:
-            db.announcements[item.id] = item
+        all_new = []
+        for scraper_func, name in [
+            (OfficialSourcesScraper.scrape_jandarma, "Jandarma"),
+            (OfficialSourcesScraper.scrape_msu, "MSU"),
+            (OfficialSourcesScraper.scrape_osym, "OSYM"),
+            (OfficialSourcesScraper.scrape_resmi_gazete, "Resmi Gazete"),
+            (OfficialSourcesScraper.scrape_iskur_kamu, "ISKUR"),
+            (OfficialSourcesScraper.scrape_kariyer_kapisi, "Kariyer Kapisi"),
+        ]:
+            try:
+                items = scraper_func()
+                if items:
+                    all_new.extend(items)
+                    for item in items:
+                        db.announcements[item.id] = item
+            except Exception as e:
+                print(f"{name} kazıma hatası: {e}")
 
         # Canlı taranan yeni ilanları doğrudan Firebase Firestore 'announcements' koleksiyonuna kaydet
         saved_firestore_count = 0
@@ -63,81 +73,80 @@ class Daily12PMScheduler:
         open_today_count = 0
         notifications_sent = []
 
-        for ann_id, ann in db.announcements.items():
-            date_range_str = f"{ann.application_start or ''} - {ann.application_deadline or ''}".strip(" -")
-            date_status = DateCheckerService.check_is_open_today(date_range_str, current_date=check_date)
+        try:
+            for ann_id, ann in list(db.announcements.items()):
+                date_range_str = f"{ann.application_start or ''} - {ann.application_deadline or ''}".strip(" -")
+                date_status = DateCheckerService.check_is_open_today(date_range_str, current_date=check_date)
 
-            if date_status["is_open"]:
-                open_today_count += 1
+                if date_status["is_open"]:
+                    open_today_count += 1
 
-            # Eğer TAM BUGÜN başladıysa -> Firebase Push Bildirimi fırlat!
-            if date_status["is_started_today"]:
-                cat_val = getattr(ann.category, 'value', str(ann.category))
-                notif_res = FirebaseNotificationService.notify_announcement_opened_today(
-                    title=ann.title,
-                    organization=ann.organization,
-                    official_url=ann.official_url,
-                    category=cat_val
-                )
-                notifications_sent.append({
-                    "announcement_id": ann_id,
-                    "title": ann.title,
-                    "firebase_status": notif_res["status"],
-                    "topic": notif_res.get("topic")
-                })
-
+                # Eğer TAM BUGÜN başladıysa -> Firebase Push Bildirimi fırlat!
+                if date_status["is_started_today"]:
+                    cat_val = getattr(ann.category, 'value', str(ann.category))
+                    notif_res = FirebaseNotificationService.notify_announcement_opened_today(
+                        title=ann.title,
+                        organization=ann.organization,
+                        official_url=ann.official_url,
+                        category=cat_val
+                    )
+                    notifications_sent.append({
+                        "announcement_id": ann_id,
+                        "title": ann.title,
+                        "firebase_status": notif_res.get("status", "unknown"),
+                        "topic": notif_res.get("topic")
+                    })
+        except Exception as e:
+            print(f"Tarih karşılaştırma döngü hatası: {e}")
 
         # 2. Premium Özel Linkleri (URL Watchers) Firestore'dan İndir & Tara
-        loaded_watcher_count = CustomUrlWatcherService.load_watchers_from_firestore()
         updated_custom_links = []
         watcher_scan_reports = []
-
-        for watcher_id, watcher in db.custom_watchers.items():
-            incoming_content = simulated_html_changes.get(watcher_id, None)
-            has_update, message = CustomUrlWatcherService.scan_watcher_12pm(watcher, incoming_content)
-
-            report_item = {
-                "id": watcher.id,
-                "label": watcher.label,
-                "url": watcher.url,
-                "has_update": has_update,
-                "message": message
-            }
-            watcher_scan_reports.append(report_item)
-
-            if has_update:
-                updated_custom_links.append(report_item)
-
-            # A. Eğer kullanıcının FCM tokenı varsa doğrudan kullanıcının cihazına push bildirim gönder
-            target_token = getattr(watcher, 'fcm_token', None)
-            if target_token:
+        try:
+            loaded_watcher_count = CustomUrlWatcherService.load_watchers_from_firestore()
+            for watcher_id, watcher in list(db.custom_watchers.items()):
                 try:
-                    title_text = "🎯 Özel Takip: Yeni Duyuru Bulundu!" if has_update else "🔍 Özel Takip Raporu"
-                    FirebaseNotificationService.send_push_notification(
-                        topic=f"watcher_{watcher.id}",
-                        title=title_text,
-                        body=message,
-                        data={"url": watcher.url, "watcher_id": watcher.id}
-                    )
+                    incoming_content = simulated_html_changes.get(watcher_id, None)
+                    has_update, message = CustomUrlWatcherService.scan_watcher_12pm(watcher, incoming_content)
+
+                    report_item = {
+                        "id": watcher.id,
+                        "label": watcher.label,
+                        "url": watcher.url,
+                        "has_update": has_update,
+                        "message": message
+                    }
+                    watcher_scan_reports.append(report_item)
+
+                    if has_update:
+                        updated_custom_links.append(report_item)
+
+                    target_token = getattr(watcher, 'fcm_token', None)
+                    if target_token:
+                        title_text = "🎯 Özel Takip: Yeni Duyuru Bulundu!" if has_update else "🔍 Özel Takip Raporu"
+                        FirebaseNotificationService.send_push_notification(
+                            topic=f"watcher_{watcher.id}",
+                            title=title_text,
+                            body=message,
+                            data={"url": watcher.url, "watcher_id": watcher.id}
+                        )
+
+                    # Firestore 'custom_watchers' koleksiyonunda tarama sonucunu güncelle
+                    if FirebaseNotificationService._initialized:
+                        from firebase_admin import firestore
+                        db_client = firestore.client()
+                        db_client.collection('custom_watchers').document(watcher.id).set({
+                            'last_checked_12pm': f"Sunucu Taraması ({datetime.now().strftime('%H:%M')})",
+                            'last_scanned_result': message,
+                            'has_update': has_update,
+                            'last_scan_timestamp': firestore.SERVER_TIMESTAMP,
+                        }, merge=True)
                 except Exception as e:
-                    print(f"Özel link bildirim hatası: {e}")
+                    print(f"Watcher tekil tarama hatası ({watcher_id}): {e}")
+        except Exception as e:
+            print(f"Watcher genel tarama hatası: {e}")
 
-            # B. Firestore 'custom_watchers' koleksiyonunda tarama sonucunu güncelle
-            try:
-                from services.firebase_service import FirebaseNotificationService
-                if FirebaseNotificationService._initialized:
-                    from firebase_admin import firestore
-                    db_client = firestore.client()
-                    db_client.collection('custom_watchers').document(watcher.id).set({
-                        'last_checked_12pm': f"Sunucu Taraması ({datetime.now().strftime('%H:%M')})",
-                        'last_scanned_result': message,
-                        'has_update': has_update,
-                        'last_scan_timestamp': firestore.SERVER_TIMESTAMP,
-                    }, merge=True)
-            except Exception as e:
-                print(f"Firestore watcher güncelleme hatası: {e}")
-
-        # 3. Her taramadan sonra tüm kullanıcılara genel bildirim fırlat: 'Yeni ilanlar listelendi hemen bak'
+        # 3. Her taramadan sonra tüm kullanıcılara genel bildirim fırlat
         try:
             FirebaseNotificationService.notify_daily_scan_completed(open_count=open_today_count)
         except Exception as e:

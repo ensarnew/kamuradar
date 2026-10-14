@@ -233,15 +233,32 @@ def trigger_periodic_cron(slot_hour: Optional[int] = None):
     yeni ilanları Firestore 'announcements' koleksiyonuna doğrudan basar
     ve 'kamuradar_all' ile 'announcements' konularına anlık push bildirim fırlatır.
     """
-    report = Daily12PMScheduler.run_daily_12pm_batch()
-    return report
+    try:
+        report = Daily12PMScheduler.run_daily_12pm_batch()
+        return report
+    except Exception as e:
+        import traceback
+        err_msg = f"Tarama sırasında hata oluştu: {str(e)}"
+        print(err_msg)
+        traceback.print_exc()
+        return {
+            "status": "partial_success",
+            "message": err_msg,
+            "error_detail": traceback.format_exc(),
+            "last_run_stats": Daily12PMScheduler.last_run_stats
+        }
 
 @app.get("/api/cron/status")
 def get_cron_status():
+    import os
+    from services.firebase_service import FirebaseNotificationService
+    FirebaseNotificationService.initialize()
     return {
         "schedule": "Gündüz Periyodik: 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00",
         "last_run": Daily12PMScheduler.last_run_timestamp,
-        "last_run_stats": Daily12PMScheduler.last_run_stats
+        "last_run_stats": Daily12PMScheduler.last_run_stats,
+        "firebase_connected": FirebaseNotificationService._initialized,
+        "has_env_creds": bool(os.getenv("FIREBASE_CREDENTIALS_JSON"))
     }
 
 
