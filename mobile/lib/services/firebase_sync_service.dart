@@ -419,11 +419,9 @@ class FirebaseSyncService {
 
   // 11. Admin Tarafından Kullanıcıya VIP Ver veya Kaldır
   static Future<bool> setUserVipByAdmin(String uid, bool isVip, {String plan = "vip_family_plan"}) async {
-    bool backendSuccess = false;
-
     // A. Önce Render Backend Admin API'sini çağır (Firebase Admin SDK ile tam yetkili yazar)
     try {
-      final res = await http.post(
+      await http.post(
         Uri.parse("https://kamuradar.onrender.com/api/admin/set-user-vip"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
@@ -432,10 +430,6 @@ class FirebaseSyncService {
           "plan": isVip ? plan : "free"
         }),
       ).timeout(const Duration(seconds: 8));
-
-      if (res.statusCode == 200) {
-        backendSuccess = true;
-      }
     } catch (_) {}
 
     // B. İstemci Firestore Doğrudan Yazma (Yedek)

@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/cache_service.dart';
 import '../services/ad_service.dart';
 import '../services/notification_service.dart';
+import '../services/firebase_sync_service.dart';
 import '../theme/app_theme.dart';
 import 'admin_panel_screen.dart';
 
