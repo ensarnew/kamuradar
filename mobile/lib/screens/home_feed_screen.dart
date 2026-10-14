@@ -501,6 +501,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 ..addAll(remoteChannels);
             });
             _loadCachedAlarms();
+            // 🔓 İlk Firebase yüklemesinde 4 ücretsiz ilan ID'sini belirle ve kaydet
+            _initFreeAnnouncementIds(remoteChannels);
           }
         }
       }, onError: (err) {
@@ -540,6 +542,13 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       final activeIds = await CacheService.getActiveAlarms();
       final bonus = await CacheService.getBonusNotifications();
       final used = await CacheService.getUsedNotifications();
+
+      final prefs = await SharedPreferences.getInstance();
+      final savedFreeIds = prefs.getStringList("free_preview_ids");
+      if (savedFreeIds != null && savedFreeIds.isNotEmpty && !_freeIdsInitialized) {
+        _freeAnnouncementIds = savedFreeIds.toSet();
+        _freeIdsInitialized = true;
+      }
 
       // Tarihe göre ilan durumlarını sınıflandır:
       // Son başvuru tarihi geçmiş olanlar kesinlikle 'Kapalı', henüz başlamamışlar 'Yakında',
@@ -682,18 +691,66 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
   int get _activeCount => _channels.where((c) => c.isAlarmActive).length;
 
-  // 🔒 Sistemde VIP olmayan kullanıcı için açık olan YALNIZCA 4 sabit ilan (Filtrelese bile sadece bunlar açık)
-  static const Set<String> _freeAnnouncementIds = {
+  // 🔓 Ücretsiz kullanıcıya gösterilecek 4 sabit ilan ID'si
+  // Firebase'den ilk yüklemede seçilir, SharedPreferences'a kaydedilir → sonraki açılışlarda değişmez
+  Set<String> _freeAnnouncementIds = {
     "saglik-01",
     "polis-01",
     "adalet-01",
     "jandarma-01",
-  };
+  }; // Fallback: statik catalog ID'leri
+
+  bool _freeIdsInitialized = false;
+
+  /// Firebase verisi yüklendikten sonra 4 ücretsiz ilan ID'sini belirler.
+  /// Önce is_free_preview:true olanları arar, yoksa ilk 4 Açık ilanı seçer.
+  /// Seçilen ID'ler SharedPreferences'a kaydedilir ve bir daha değişmez.
+  Future<void> _initFreeAnnouncementIds(List<ChannelAlarm> channels) async {
+    if (_freeIdsInitialized) return;
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Daha önce kaydedilmiş ID'ler var mı?
+    final savedIds = prefs.getStringList("free_preview_ids");
+    if (savedIds != null && savedIds.isNotEmpty) {
+      if (mounted) {
+        setState(() {
+          _freeAnnouncementIds = savedIds.toSet();
+          _freeIdsInitialized = true;
+        });
+      }
+      return;
+    }
+
+    // 2. Firebase/kanallardan 4 adet Açık KAMU ilanı seç
+    // Önce Açık olan Kamu ilanlarına bak, yetmezse genel Açık ilanlara, yetmezse mevcut kanallara bak
+    var candidates = channels
+        .where((c) => c.status == "Açık" && c.sectorType == "KAMU")
+        .toList();
+    if (candidates.length < 4) {
+      candidates = channels.where((c) => c.status == "Açık").toList();
+    }
+    if (candidates.isEmpty) {
+      candidates = List.from(channels);
+    }
+
+    final selected = candidates.take(4).map((c) => c.id).toList();
+
+    if (selected.isNotEmpty) {
+      await prefs.setStringList("free_preview_ids", selected);
+      if (mounted) {
+        setState(() {
+          _freeAnnouncementIds = selected.toSet();
+          _freeIdsInitialized = true;
+        });
+      }
+    }
+  }
 
   bool _isChannelLocked(ChannelAlarm ch) {
     if (_effectiveVip) return false;
     return !_freeAnnouncementIds.contains(ch.id);
   }
+
 
   int _selectedTabIndex = 0; // 0: İlanlar, 1: Sınav Takvimi, 2: Sonuç & Mülakat
   String _selectedSector = "Tümü"; // "Tümü", "Kamu", "Normal"
