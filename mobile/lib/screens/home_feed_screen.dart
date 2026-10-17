@@ -1340,7 +1340,28 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
+
+            TextButton.icon(
+              icon: const Icon(Icons.vpn_key, size: 14, color: Color(0xFF2563EB)),
+              label: const Text("Promosyon / Aile Kodunuz mu Var? Kod Girin", style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (c) => FamilySubscriptionScreen(
+                      isVip: _effectiveVip,
+                      onPlanPurchased: () {
+                        setState(() => _isUserVip = true);
+                        widget.onUpgradeVip?.call();
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 6),
 
             TextButton(
               onPressed: () => Navigator.pop(ctx),

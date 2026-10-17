@@ -419,6 +419,44 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     final cleanCode = code.trim().toUpperCase();
     if (cleanCode.isEmpty) return;
 
+    // Google Play İnceleme Uzmanı & Test Promosyon Kodu
+    if (cleanCode == "GOOGLEVIP" || cleanCode == "TESTVIP" || cleanCode == "KAMURADAR2026") {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool("is_family_group_owner", true);
+      await prefs.setString("user_family_invite_code", cleanCode);
+      await prefs.remove("joined_family_code");
+
+      setState(() {
+        _isPlanPurchased = true;
+        _isGroupOwner = true;
+        _generatedInviteCode = cleanCode;
+      });
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+            'invite_code': cleanCode,
+            'is_vip': true,
+            'vip_plan': 'reviewer_plan',
+          }, SetOptions(merge: true));
+        } catch (_) {}
+      }
+
+      await FirebaseSyncService.setVipStatus(true, plan: "reviewer_plan");
+      widget.onPlanPurchased?.call();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Color(0xFF10B981),
+            content: Text("🎉 Google Play İnceleme Erişimi Başarılı! Tüm VIP kısıtlamaları kaldırıldı."),
+          ),
+        );
+      }
+      return;
+    }
+
     final user = FirebaseAuth.instance.currentUser;
     bool isValid = false;
     String? errorMessage;
@@ -926,12 +964,12 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                       children: [
                         Icon(Icons.vpn_key, color: Color(0xFF38BDF8), size: 18),
                         SizedBox(width: 8),
-                        Text("Arkadaşının Davet Kodu mu Var?", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                        Text("Davet veya Promosyon Kodu", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
                       ],
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      "Size verilen özel aile davet kodunu girerek hiçbir ücret ödemeden anında Premium üyeliğe geçebilirsiniz.",
+                      "Size verilen aile davet kodunu veya Google Play test promosyon kodunu girerek ücret ödemeden anında Premium erişim sağlayabilirsiniz.",
                       style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                     ),
                     const SizedBox(height: 12),
@@ -943,7 +981,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                             textCapitalization: TextCapitalization.characters,
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                             decoration: InputDecoration(
-                              hintText: "Davet Kodunu Girin (Örn: KR-XXXX)",
+                              hintText: "Kod Girin (Örn: KR-XXXX veya GOOGLEVIP)",
                               hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
                               filled: true,
                               fillColor: const Color(0xFF091122),
@@ -964,7 +1002,7 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           onPressed: () => _submitFriendInviteCode(_friendCodeController.text),
-                          child: const Text("Katıl & VIP Ol", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                          child: const Text("Kodu Onayla", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
