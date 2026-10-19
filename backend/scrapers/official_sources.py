@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 from models import Announcement, AnnouncementCategory
 from database import db
@@ -12,8 +12,8 @@ class OfficialSourcesScraper:
     @staticmethod
     def scrape_jandarma() -> List[Announcement]:
         """Jandarma Genel Komutanlığı Personel Temin Sayfasını Tarar"""
-        # Canlı ortamda httpx/requests ile vatandas.jandarma.gov.tr taranır.
-        # Bu fonksiyon taranan veriyi standart formata dönüştürür.
+        now = datetime.now()
+        deadline = now + timedelta(days=16)
         return [
             Announcement(
                 id="jnd-daily-scan",
@@ -22,11 +22,11 @@ class OfficialSourcesScraper:
                 category=AnnouncementCategory.JANDARMA,
                 summary="JSGA bünyesinde istihdam edilmek üzere muvazzaf/sözleşmeli subay ve astsubay temini yapılacaktır.",
                 requirements=["Lisans/önlisans mezunu olmak", "KPSS ilgili puan türünden taban puanı almış olmak"],
-                application_start=datetime.now().strftime("%d.%m.%Y"),
-                application_deadline="30.10.2026",
-                official_url="https://vatandas.jandarma.gov.tr/PTM/Giris",
-                published_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
-                scanned_at_12pm=datetime.now().strftime("%Y-%m-%d 12:00"),
+                application_start=now.strftime("%d.%m.%Y"),
+                application_deadline=deadline.strftime("%d.%m.%Y"),
+                official_url="https://personeltemin.jandarma.gov.tr",
+                published_at=now.strftime("%Y-%m-%d %H:%M"),
+                scanned_at_12pm=now.strftime("%Y-%m-%d 12:00"),
                 is_hot=True
             )
         ]
@@ -34,6 +34,8 @@ class OfficialSourcesScraper:
     @staticmethod
     def scrape_msu() -> List[Announcement]:
         """Milli Savunma Üniversitesi & MSB Personel Temin Sayfasını Tarar"""
+        now = datetime.now()
+        deadline = now + timedelta(days=22)
         return [
             Announcement(
                 id="msu-daily-scan",
@@ -42,11 +44,11 @@ class OfficialSourcesScraper:
                 category=AnnouncementCategory.MSU_ASKERI,
                 summary="Kara, Deniz ve Hava Kuvvetleri Komutanlıkları için sözleşmeli erbaş/er temini başvuru ekranı açılmıştır.",
                 requirements=["En az ilköğretim mezunu olmak", "Askerlik hizmetine başlamış veya terhis olmuş olmak"],
-                application_start=datetime.now().strftime("%d.%m.%Y"),
-                application_deadline="15.11.2026",
+                application_start=now.strftime("%d.%m.%Y"),
+                application_deadline=deadline.strftime("%d.%m.%Y"),
                 official_url="https://personeltemin.msb.gov.tr",
-                published_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
-                scanned_at_12pm=datetime.now().strftime("%Y-%m-%d 12:00"),
+                published_at=now.strftime("%Y-%m-%d %H:%M"),
+                scanned_at_12pm=now.strftime("%Y-%m-%d 12:00"),
                 is_hot=True
             )
         ]

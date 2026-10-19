@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/announcement.dart';
 import '../models/custom_link.dart';
 import '../models/exam_schedule.dart';
@@ -232,5 +233,21 @@ class ApiService {
       print("API Hatası (getRadarAIQuota): $e");
       rethrow;
     }
+  }
+  // 6. Otomatik Bot Taramasını Tetikle (Günde en az 1 kez uygulama açılışında arka planda tetikler)
+  static Future<void> triggerAutoScanSlot() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final todayStr = DateTime.now().toIso8601String().split('T')[0];
+      final lastScanDate = prefs.getString("last_auto_cron_date");
+
+      if (lastScanDate != todayStr) {
+        await prefs.setString("last_auto_cron_date", todayStr);
+        await http.post(
+          Uri.parse("$baseUrl/api/cron/trigger-slot"),
+          headers: _headers,
+        ).timeout(const Duration(seconds: 15));
+      }
+    } catch (_) {}
   }
 }

@@ -9,7 +9,8 @@ class AnnouncementDetailData {
   final String title;
   final String position;
   final String city;
-  final String date;
+  final String date; // Başvuru Başlangıç / Açılış Tarihi
+  final String? deadline; // Son Başvuru / Kapanış Tarihi
   final String quota;
   final String employmentType;
   final String applicationPlace;
@@ -31,7 +32,8 @@ class AnnouncementDetailData {
     required this.title,
     required this.position,
     this.city = "Tüm Türkiye",
-    this.date = "28.09.2026",
+    this.date = "15.10.2026",
+    this.deadline,
     this.quota = "Belirtilmemiş",
     this.employmentType = "Sözleşmeli Personel",
     this.applicationPlace = "Resmî Portal",
@@ -377,7 +379,7 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
                           Expanded(
                             child: Column(
                               children: [
-                                const Icon(Icons.calendar_month_outlined, color: Color(0xFF60A5FA), size: 20),
+                                const Icon(Icons.calendar_month_outlined, color: Color(0xFFEF4444), size: 20),
                                 const SizedBox(height: 4),
                                 const Text(
                                   "Son Başvuru",
@@ -385,9 +387,9 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  item.date,
+                                  item.deadline ?? item.date,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900),
+                                  style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 13, fontWeight: FontWeight.w900),
                                 ),
                               ],
                             ),
@@ -413,6 +415,101 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
                                 ),
                               ],
                             ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // 2.5 Başvuru Takvimi & Açılış - Kapanış Tarihi Kartı
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFF1E293B)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.date_range, color: Color(0xFF38BDF8), size: 18),
+                              SizedBox(width: 8),
+                              Text(
+                                "Başvuru Takvimi & Tarihler",
+                                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              // Açılış Tarihi
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF131E33),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Row(
+                                        children: [
+                                          Icon(Icons.play_circle_fill, color: Color(0xFF22C55E), size: 14),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            "Başvuru Açılış",
+                                            style: TextStyle(color: Color(0xFF86EFAC), fontSize: 10, fontWeight: FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        item.date,
+                                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // Kapanış Tarihi
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF131E33),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Row(
+                                        children: [
+                                          Icon(Icons.timer, color: Color(0xFFEF4444), size: 14),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            "Son Başvuru (Kapanış)",
+                                            style: TextStyle(color: Color(0xFFFCA5A5), fontSize: 10, fontWeight: FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        item.deadline ?? item.date,
+                                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

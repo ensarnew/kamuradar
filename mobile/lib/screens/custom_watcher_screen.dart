@@ -62,12 +62,12 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
   final List<CustomLinkWatcher> _watchers = [
     CustomLinkWatcher(
       id: "watch-01",
-      url: "https://vatandas.jandarma.gov.tr/PTM/Giris",
-      label: "Jandarma Uzman Erbaş Alımı Nöbetçisi",
+      url: "https://personeltemin.jandarma.gov.tr",
+      label: "Jandarma & JSGA Personel Alımı Nöbetçisi",
       lastChecked12pm: "Gündüz Taraması (10:00 - 22:00)",
       hasUpdate: false,
-      aiCriteria: "Uzman Erbaş",
-      targetKeywords: ["Uzman Erbaş"],
+      aiCriteria: "Jandarma, Uzman Erbaş, Subay, Astsubay, JSGA",
+      targetKeywords: ["Jandarma", "Personel", "Uzman Erbaş", "Subay", "Astsubay", "JSGA"],
       isNotificationActive: true,
       lastScannedResult: "Gündüz periyodu (10:00 - 22:00) nöbette",
     ),
@@ -120,14 +120,23 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
         if (decoded.isNotEmpty && mounted) {
           final loaded = decoded.map((item) {
             final w = CustomLinkWatcher.fromJson(item);
+            var current = w;
+            // Eski Jandarma URL'sini yeni resmi portala otomatik güncelle
+            if (current.url.contains("vatandas.jandarma.gov.tr")) {
+              current = current.copyWith(
+                url: "https://personeltemin.jandarma.gov.tr",
+                label: "Jandarma & JSGA Personel Alımı Nöbetçisi",
+                targetKeywords: ["jandarma", "personel", "uzman", "subay", "astsubay", "jsga"],
+              );
+            }
             // Eski sürümlerden veya alakasız sitelerden kalan hatalı pozitif sonuçları temizle
-            if (w.url.contains("3dtoptantr") || (w.hasUpdate && !w.url.contains("gov.tr") && !w.url.contains("edu.tr") && !w.url.contains("tsk.tr"))) {
-              return w.copyWith(
+            if (current.url.contains("3dtoptantr") || (current.hasUpdate && !current.url.contains("gov.tr") && !current.url.contains("edu.tr") && !current.url.contains("tsk.tr"))) {
+              return current.copyWith(
                 hasUpdate: false,
                 lastScannedResult: "❌ İlan Bulunamadı: Aradığınız kriterler bu sayfada geçmiyor.",
               );
             }
-            return w;
+            return current;
           }).toList();
           setState(() {
             _watchers.clear();
@@ -184,6 +193,9 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
       String rawUrl = w.url.trim();
       if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
         rawUrl = "https://$rawUrl";
+      }
+      if (rawUrl.contains("vatandas.jandarma.gov.tr")) {
+        rawUrl = "https://personeltemin.jandarma.gov.tr";
       }
 
       final uri = Uri.parse(rawUrl);
@@ -367,7 +379,11 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
   }
 
   Future<void> _openLink(String url) async {
-    final uri = Uri.parse(url);
+    String targetUrl = url;
+    if (targetUrl.contains("vatandas.jandarma.gov.tr")) {
+      targetUrl = "https://personeltemin.jandarma.gov.tr";
+    }
+    final uri = Uri.parse(targetUrl);
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
