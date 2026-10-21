@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query, Header
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -40,10 +41,97 @@ def health_check():
         "version": "2.0.0",
         "endpoints": {
             "docs": "/docs",
+            "privacy": "/privacy",
+            "terms": "/terms",
             "exam_schedules": "/api/exam-schedules",
             "open_announcements": "/api/announcements/open"
         }
     }
+
+# ----------------- 0.1 GİZLİLİK POLİTİKASI & KULLANIM KOŞULLARI (GOOGLE PLAY COMPLIANT) -----------------
+
+@app.get("/privacy", response_class=HTMLResponse)
+def get_privacy_policy():
+    """Google Play kurallarına tam uyumlu Gizlilik Politikası ve Sorumluluk Reddi sayfası."""
+    return """<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KamuRadar - Gizlilik Politikası & Sorumluluk Reddi</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; background: #f8fafc; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        h1 { color: #0f172a; border-bottom: 2px solid #38bdf8; padding-bottom: 10px; font-size: 24px; }
+        h2 { color: #0284c7; margin-top: 24px; font-size: 18px; }
+        .alert-box { background: #fef2f2; border-left: 4px solid #ef4444; padding: 14px; border-radius: 6px; margin: 20px 0; font-size: 14px; color: #991b1b; }
+        .alert-box strong { color: #b91c1c; display: block; margin-bottom: 4px; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 6px; }
+        a { color: #0284c7; text-decoration: underline; }
+        .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>KamuRadar Gizlilik Politikası & Kullanım Koşulları</h1>
+        <p><strong>Son Güncelleme:</strong> 21 Ekim 2026</p>
+
+        <div class="alert-box">
+            <strong>ÖNEMLİ RESMÎ SORUMLULUK REDDİ BEYANI (DISCLAIMER):</strong>
+            KamuRadar bağımsız bir mobil bilgilendirme ve sınav/ilan takip servisidir. <strong>KamuRadar herhangi bir devlet kurumunu, bakanlığı, silahlı kuvvetleri veya resmî kamu kuruluşunu TEMSİL ETMEZ ve bu kurumlarla kurumsal bir bağı bulunmamaktadır.</strong> Uygulamada yer alan tüm ilanlar, kamunun erişimine açık resmî portallardan derlenmektedir. Kesin başvuru şartları ve resmî başvurular yalnızca ilgili kurumun resmî web sayfası üzerinden yapılmalıdır.
+        </div>
+
+        <h2>1. Resmî Bilgi ve İlan Kaynaklarımız</h2>
+        <p>Uygulamada sunulan kamu personeli alımı, KPSS ve sınav takvimi bilgileri aşağıdaki doğrulanabilir resmî kaynaklardan temin edilmektedir:</p>
+        <ul>
+            <li><strong>T.C. Resmî Gazete:</strong> <a href="https://www.resmigazete.gov.tr" target="_blank" rel="noopener">https://www.resmigazete.gov.tr</a></li>
+            <li><strong>Kariyer Kapısı (Cumhurbaşkanlığı İnsan Kaynakları Ofisi):</strong> <a href="https://kariyerkapisi.gov.tr" target="_blank" rel="noopener">https://kariyerkapisi.gov.tr</a></li>
+            <li><strong>Kamu İlan Portalı (Strateji ve Bütçe Bşk.):</strong> <a href="https://kamuilan.sbb.gov.tr" target="_blank" rel="noopener">https://kamuilan.sbb.gov.tr</a></li>
+            <li><strong>Türkiye İş Kurumu (İŞKUR):</strong> <a href="https://www.iskur.gov.tr" target="_blank" rel="noopener">https://www.iskur.gov.tr</a></li>
+            <li><strong>Ölçme, Seçme ve Yerleştirme Merkezi (ÖSYM):</strong> <a href="https://www.osym.gov.tr" target="_blank" rel="noopener">https://www.osym.gov.tr</a></li>
+            <li><strong>Jandarma Personel Temin Sistemi:</strong> <a href="https://personeltemin.jandarma.gov.tr" target="_blank" rel="noopener">https://personeltemin.jandarma.gov.tr</a></li>
+            <li><strong>Polis Akademisi Başkanlığı:</strong> <a href="https://pa.edu.tr" target="_blank" rel="noopener">https://pa.edu.tr</a></li>
+            <li><strong>Millî Savunma Bakanlığı (MSB):</strong> <a href="https://personeltemin.msb.gov.tr" target="_blank" rel="noopener">https://personeltemin.msb.gov.tr</a></li>
+            <li><strong>Sağlık Bakanlığı:</strong> <a href="https://www.saglik.gov.tr" target="_blank" rel="noopener">https://www.saglik.gov.tr</a></li>
+            <li><strong>Millî Eğitim Bakanlığı:</strong> <a href="https://www.meb.gov.tr" target="_blank" rel="noopener">https://www.meb.gov.tr</a></li>
+        </ul>
+
+        <h2>2. Toplanan Veriler ve Kullanım Amaçları</h2>
+        <p>KamuRadar, kullanıcı deneyimini sağlamak için yalnızca asgari düzeyde teknik veri işler:</p>
+        <ul>
+            <li><strong>Oturum Bilgisi (İsteğe Bağlı):</strong> Google ile giriş yapıldığında yalnızca kullanıcı ID'si, e-posta ve görünen isim bulut yedekleme amacıyla Firebase üzerinde saklanır. Şifrenize asla erişilmez. Misafir modu ile giriş yapmadan da uygulama kullanılabilir.</li>
+            <li><strong>Bildirim Belirteci (FCM Token):</strong> Takip ettiğiniz kamu ilanları veya kurduğunuz alarmlarla ilgili telefonunuza anlık bildirim göndermek amacıyla kullanılır.</li>
+            <li><strong>Yerel Tercihler:</strong> Favori ilanlarınız ve takip ettiğiniz web adresleri cihazınızın yerel hafızasında saklanır.</li>
+        </ul>
+
+        <h2>3. Üçüncü Taraf Servisler</h2>
+        <p>Uygulamamız aşağıdaki güvenli ve endüstri standardı altyapıları kullanır:</p>
+        <ul>
+            <li><strong>Google Firebase:</strong> Kimlik doğrulama, Firestore veritabanı ve bildirim iletimi (FCM).</li>
+            <li><strong>Google Play Billing:</strong> VIP aboneliklerin güvenli şekilde faturalandırılması (kredi kartı bilgileriniz doğrudan Google Play tarafından işlenir, sunucularımızda tutulmaz).</li>
+            <li><strong>Unity Ads:</strong> Ücretsiz kullanıcılara ödüllü ilan açma ve bildirim hakkı tanımlama reklamları sunmak için kullanılır.</li>
+        </ul>
+
+        <h2>4. Veri Güvenliği ve Silme Hakkı</h2>
+        <p>Verileriniz SSL/TLS şifreleme ile korunur. Kullanıcılar diledikleri zaman Profil sayfasından oturumlarını kapatabilir veya hesaplarının ve alarmlarının silinmesini talep edebilirler.</p>
+
+        <h2>5. İletişim</h2>
+        <p>Gizlilik politikamız veya uygulamayla ilgili her türlü soru ve geri bildiriminiz için bizimle iletişime geçebilirsiniz:</p>
+        <p><strong>E-posta:</strong> kamuradar.destek@gmail.com</p>
+
+        <div class="footer">
+            &copy; 2026 KamuRadar. Tüm hakları saklıdır.
+        </div>
+    </div>
+</body>
+</html>"""
+
+@app.get("/terms", response_class=HTMLResponse)
+def get_terms_of_service():
+    """Kullanım Koşulları sayfası (Gizlilik Politikasına yönlendirir veya aynısını sunar)."""
+    return get_privacy_policy()
+
 
 # ----------------- 1. SINAV TAKVİMİ & BAŞVURU ZAMANLARI (10 ADET) -----------------
 
