@@ -850,7 +850,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             children: [
               TextButton(
                 onPressed: () async {
-                  final uri = Uri.parse("https://kamuradar.onrender.com/privacy");
+                  final uri = Uri.parse("https://github.com/ensarnew/kamuradar/blob/main/PRIVACY_POLICY.md");
                   try {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } catch (_) {}

@@ -308,7 +308,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                     ),
                     InkWell(
-                      onTap: () => launchUrl(Uri.parse("https://kamuradar.onrender.com/privacy"), mode: LaunchMode.externalApplication),
+                      onTap: () => launchUrl(Uri.parse("https://github.com/ensarnew/kamuradar/blob/main/PRIVACY_POLICY.md"), mode: LaunchMode.externalApplication),
                       child: const Text(
                         "Kullanım Koşulları",
                         style: TextStyle(fontSize: 11, color: Color(0xFF38BDF8), decoration: TextDecoration.underline),
@@ -319,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                     ),
                     InkWell(
-                      onTap: () => launchUrl(Uri.parse("https://kamuradar.onrender.com/privacy"), mode: LaunchMode.externalApplication),
+                      onTap: () => launchUrl(Uri.parse("https://github.com/ensarnew/kamuradar/blob/main/PRIVACY_POLICY.md"), mode: LaunchMode.externalApplication),
                       child: const Text(
                         "Gizlilik Sözleşmesi",
                         style: TextStyle(fontSize: 11, color: Color(0xFF38BDF8), decoration: TextDecoration.underline),
