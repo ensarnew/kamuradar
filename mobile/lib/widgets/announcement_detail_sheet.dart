@@ -96,15 +96,32 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
     );
   }
 
+  String _sanitizeUrl(String url) {
+    if (url.contains("kamuradar.app") || url.contains("isealimkariyerkapisi.cbiko.gov.tr")) {
+      return "https://kariyerkapisi.gov.tr";
+    }
+    if (url.contains("vatandas.jandarma.gov.tr")) {
+      return "https://personeltemin.jandarma.gov.tr";
+    }
+    if (url.contains("baglantilar/kurum-disi")) {
+      return "https://esube.iskur.gov.tr";
+    }
+    if (url.contains("ilbank.gov.tr") && !url.contains("www.")) {
+      return "https://www.ilbank.gov.tr";
+    }
+    return url;
+  }
+
   Future<void> _handleApply() async {
     void openUrl() async {
-      final uri = Uri.parse(widget.item.officialUrl);
+      final safeUrl = _sanitizeUrl(widget.item.officialUrl);
+      final uri = Uri.parse(safeUrl);
       try {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } catch (_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Yönlendiriliyor: ${widget.item.officialUrl}")),
+            SnackBar(content: Text("Yönlendiriliyor: $safeUrl")),
           );
         }
       }
@@ -608,7 +625,7 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
                           InkWell(
                             onTap: _handleApply,
                             child: Text(
-                              item.officialUrl,
+                              _sanitizeUrl(item.officialUrl),
                               style: const TextStyle(
                                 color: Color(0xFF60A5FA),
                                 fontSize: 11,

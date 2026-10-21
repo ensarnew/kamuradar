@@ -167,7 +167,7 @@ class OfficialSourcesScraper:
                 requirements=["İlgili meslek kolunda tecrübe veya ehliyet belgesine sahip olmak", "Adli sicil kaydı bulunmamak"],
                 application_start=date_str,
                 application_deadline="29.10.2026",
-                official_url="https://www.iskur.gov.tr/baglantilar/kurum-disi-kamu-isci-alimi",
+                official_url="https://esube.iskur.gov.tr",
                 published_at=now.strftime("%Y-%m-%d %H:%M"),
                 scanned_at_12pm=now.strftime("%Y-%m-%d %H:%M"),
                 is_hot=True
@@ -189,7 +189,7 @@ class OfficialSourcesScraper:
                 requirements=["e-Devlet kapısı üzerinden Kariyer Kapısı girişi yapmak", "Lisans veya Önlisans KPSS puanı bulunmak"],
                 application_start=date_str,
                 application_deadline="30.10.2026",
-                official_url="https://isealimkariyerkapisi.cbiko.gov.tr",
+                official_url="https://kariyerkapisi.gov.tr",
                 published_at=now.strftime("%Y-%m-%d %H:%M"),
                 scanned_at_12pm=now.strftime("%Y-%m-%d %H:%M"),
                 is_hot=True

@@ -509,7 +509,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                   ? List<String>.from((data['requirements'] as List).map((e) => e.toString()))
                   : ["T.C. vatandaşı olmak", "Kamu haklarından mahrum bulunmamak", "Görevini yapmaya engel sağlık sorunu olmamak"],
               description: (data['description'] ?? data['summary'] ?? 'Detaylı başvuru kılavuzu ve şartları inceleyin.').toString(),
-              officialUrl: (data['officialUrl'] ?? data['official_url'] ?? 'https://kariyerkapisi.gov.tr').toString(),
+              officialUrl: _sanitizeOfficialUrl((data['officialUrl'] ?? data['official_url'] ?? 'https://kariyerkapisi.gov.tr').toString()),
               logoIcon: _getIconForCategory(category),
               sectorType: (data['sectorType'] ?? data['sector_type'] ?? 'KAMU').toString(),
               contentType: (data['contentType'] ?? data['content_type'] ?? 'ILAN').toString(),
@@ -535,6 +535,22 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         // Hata durumunda yerel zengin katalog kesintisiz devam eder
       });
     } catch (_) {}
+  }
+
+  static String _sanitizeOfficialUrl(String url) {
+    if (url.contains("kamuradar.app") || url.contains("isealimkariyerkapisi.cbiko.gov.tr")) {
+      return "https://kariyerkapisi.gov.tr";
+    }
+    if (url.contains("vatandas.jandarma.gov.tr")) {
+      return "https://personeltemin.jandarma.gov.tr";
+    }
+    if (url.contains("baglantilar/kurum-disi")) {
+      return "https://esube.iskur.gov.tr";
+    }
+    if (url.contains("ilbank.gov.tr") && !url.contains("www.")) {
+      return "https://www.ilbank.gov.tr";
+    }
+    return url;
   }
 
   IconData _getIconForCategory(String category) {
