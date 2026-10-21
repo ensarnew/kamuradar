@@ -72,9 +72,14 @@ class _AuthGateState extends State<AuthGate> {
 
   Future<void> _checkAuth() async {
     final hasAuth = await FirebaseSyncService.hasCompletedAuth();
+    if (!hasAuth) {
+      // Yeni kullanıcılar ve Google Play inceleme botları için doğrudan misafir modunda başlat
+      // Böylece açılışta kilitli veya yanıt vermeyen giriş ekranı engeli oluşmaz.
+      await FirebaseSyncService.setGuestMode(true);
+    }
     if (mounted) {
       setState(() {
-        _isAuthenticated = hasAuth;
+        _isAuthenticated = true;
       });
     }
   }

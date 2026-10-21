@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/firebase_sync_service.dart';
 import '../main.dart';
@@ -33,6 +34,16 @@ class _LoginScreenState extends State<LoginScreen> {
             MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
           );
         }
+      } else {
+        // Kullanıcı seçimi iptal etti veya cihazda Google hesabı yok; yanıtsız kalmaması için misafir moduna al
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Google hesabı seçilmedi. Misafir olarak devam ediliyor..."),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        await _continueAsGuest();
       }
     } catch (e) {
       if (mounted) {
@@ -262,25 +273,63 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 14),
 
-                // 4. MİSAFİR OLARAK DEVAM ET BUTONU
-                TextButton(
-                  onPressed: _isLoading ? null : _continueAsGuest,
-                  child: const Text(
-                    "Giriş Yapmadan Devam Et (Misafir Modu)",
-                    style: TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.underline,
+                // 4. MİSAFİR OLARAK DEVAM ET BUTONU (BÜYÜK VE BELİRGİN BUTON)
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF38BDF8),
+                      side: const BorderSide(color: Color(0xFF38BDF8), width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: _isLoading ? null : _continueAsGuest,
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+                    label: const Text(
+                      "Giriş Yapmadan Devam Et (Misafir Modu)",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 16),
-                const Text(
-                  "Giriş yaparak Kullanım Koşulları ve Gizlilik Sözleşmesini kabul etmiş olursunuz.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                const SizedBox(height: 20),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Text(
+                      "Giriş yaparak ",
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                    InkWell(
+                      onTap: () => launchUrl(Uri.parse("https://kamuradar.onrender.com/privacy"), mode: LaunchMode.externalApplication),
+                      child: const Text(
+                        "Kullanım Koşulları",
+                        style: TextStyle(fontSize: 11, color: Color(0xFF38BDF8), decoration: TextDecoration.underline),
+                      ),
+                    ),
+                    const Text(
+                      " ve ",
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                    InkWell(
+                      onTap: () => launchUrl(Uri.parse("https://kamuradar.onrender.com/privacy"), mode: LaunchMode.externalApplication),
+                      child: const Text(
+                        "Gizlilik Sözleşmesi",
+                        style: TextStyle(fontSize: 11, color: Color(0xFF38BDF8), decoration: TextDecoration.underline),
+                      ),
+                    ),
+                    const Text(
+                      "'ni kabul etmiş olursunuz.",
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                  ],
                 ),
               ],
             ),

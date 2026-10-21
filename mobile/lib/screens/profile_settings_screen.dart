@@ -875,6 +875,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   void _showLegalDisclaimerDialog(BuildContext context) {
+    final sources = [
+      {"name": "T.C. Resmî Gazete", "url": "https://www.resmigazete.gov.tr"},
+      {"name": "Kariyer Kapısı Kamu İşe Alım", "url": "https://kariyerkapisi.gov.tr"},
+      {"name": "Cumhurbaşkanlığı Kamu İlan Portalı", "url": "https://kamuilan.sbb.gov.tr"},
+      {"name": "Türkiye İş Kurumu (İŞKUR)", "url": "https://www.iskur.gov.tr"},
+      {"name": "ÖSYM Sınav ve Sonuç Portalı", "url": "https://www.osym.gov.tr"},
+      {"name": "Jandarma Personel Temin Portalı", "url": "https://personeltemin.jandarma.gov.tr"},
+      {"name": "Polis Akademisi Başkanlığı", "url": "https://pa.edu.tr"},
+      {"name": "Millî Savunma Bakanlığı (MSB)", "url": "https://www.msb.gov.tr"},
+    ];
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -886,41 +897,56 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             SizedBox(width: 8),
             Expanded(
               child: Text(
-                "Resmî Sorumluluk Reddi",
+                "Resmî Sorumluluk Reddi & Kaynaklar",
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ),
           ],
         ),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
+              const Text(
                 "KamuRadar Bağımsız Bir Takip Servisidir",
                 style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13),
               ),
-              SizedBox(height: 6),
-              Text(
-                "KamuRadar uygulaması; herhangi bir devlet kurumu, bakanlık, askeri teşkilat veya resmi kamu kuruluşu ile resmi ya da kurumsal bir bağa sahip değildir.",
+              const SizedBox(height: 6),
+              const Text(
+                "KamuRadar uygulaması; herhangi bir devlet kurumu, bakanlık, askeri teşkilat veya resmi kamu kuruluşu ile resmi ya da kurumsal bir bağa sahip değildir ve bir devlet kuruluşunu temsil etmemektedir.",
                 style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, height: 1.4),
               ),
-              SizedBox(height: 12),
-              Text(
-                "İlan ve Bilgi Kaynakları:",
+              const SizedBox(height: 12),
+              const Text(
+                "Resmî Bilgi ve İlan Kaynakları:",
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
               ),
-              SizedBox(height: 4),
-              Text(
-                "• T.C. Resmî Gazete (resmigazete.gov.tr)\n"
-                "• Türkiye İş Kurumu - İŞKUR (iskur.gov.tr)\n"
-                "• Strateji ve Bütçe Bşk. Kamu İlan Portalı (kamuilan.sbb.gov.tr)\n"
-                "• ÖSYM, MSÜ, Jandarma ve ilgili kurumların halka açık resmi sayfaları.",
-                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, height: 1.4),
-              ),
-              SizedBox(height: 12),
-              Text(
+              const SizedBox(height: 6),
+              ...sources.map((s) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: InkWell(
+                      onTap: () => launchUrl(Uri.parse(s["url"]!), mode: LaunchMode.externalApplication),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.link, color: Color(0xFF38BDF8), size: 14),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              "${s['name']} (${s['url']})",
+                              style: const TextStyle(
+                                color: Color(0xFF38BDF8),
+                                fontSize: 11,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )),
+              const SizedBox(height: 12),
+              const Text(
                 "Yasal Uyarı: Bu uygulama sadece açık kaynaklı ilanları listeleme ve kişisel alarm kurma amacıyla hizmet vermektedir. Kesin başvuru koşulları ve resmi başvurular yalnızca ilgili kurumun internet adresinden yapılmalıdır.",
                 style: TextStyle(color: Color(0xFFF59E0B), fontSize: 10, height: 1.3),
               ),

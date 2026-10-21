@@ -581,6 +581,50 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
                       ),
                     ),
 
+                    const SizedBox(height: 12),
+
+                    // Resmî Kaynak & Sorumluluk Reddi Kutusu
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFF334155)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.verified_outlined, color: Color(0xFF38BDF8), size: 16),
+                              SizedBox(width: 6),
+                              Text(
+                                "Resmî Bilgi Kaynağı",
+                                style: TextStyle(color: Color(0xFF38BDF8), fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          InkWell(
+                            onTap: _handleApply,
+                            child: Text(
+                              item.officialUrl,
+                              style: const TextStyle(
+                                color: Color(0xFF60A5FA),
+                                fontSize: 11,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            "KamuRadar bağımsız bir takip platformudur; herhangi bir devlet kurumunu temsil etmez. Başvurular doğrudan ilgili kurumun resmî web adresi üzerinden yapılır.",
+                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, height: 1.3),
+                          ),
+                        ],
+                      ),
+                    ),
+
                     const SizedBox(height: 20),
 
                     // 5. Eylem Butonları
