@@ -261,8 +261,12 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     _listenToFirestoreAnnouncements();
     _syncWithLiveServer();
 
-    // Otomatik bot taramasını arka planda sessizce tetikle
-    ApiService.triggerAutoScanSlot();
+    // Arka plan işlemlerini ve dialogları UI çizildikten 1 saniye sonraya alıyoruz (ANR önleme)
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (!mounted) return;
+      ApiService.triggerAutoScanSlot();
+      _checkFirstLaunchPrompts();
+    });
 
     NotificationService.onLowQuotaWarning = () {
       if (mounted) {
@@ -270,10 +274,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         _showLowQuotaAlert();
       }
     };
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkFirstLaunchPrompts();
-    });
   }
 
   Future<void> _checkFirstLaunchPrompts() async {
@@ -284,13 +284,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         await _showDisclaimerModal();
       }
 
-      final hasShownRate = prefs.getBool("has_shown_rate_dialog") ?? false;
-      if (!hasShownRate && mounted) {
-        await Future.delayed(const Duration(milliseconds: 600));
-        if (mounted) {
-          await _showRateAppDialog();
-        }
-      }
+      // Puan verme diyaloğunu hemen ilk açılışta patlatmak donmaya sebep olabiliyordu,
+      // sadece kullanıcı disclaimeri geçip uygulamayı bir süre kullandıktan sonra sorulmalı
     } catch (_) {}
   }
 

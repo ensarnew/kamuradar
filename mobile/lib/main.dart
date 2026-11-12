@@ -16,12 +16,19 @@ void main() async {
 
   try {
     await Firebase.initializeApp();
-    await NotificationService.initialize();
   } catch (e) {
     debugPrint("Firebase başlatma notu: $e");
   }
 
-  Future.microtask(() async {
+  // Ağır SDK'ları ve izin isteklerini ana thread'i tıkamamak için
+  // açılıştan sonraya (arka plana) alıyoruz. Böylece ANR (Uygulama Yanıt Vermiyor) oluşmaz!
+  Future.delayed(const Duration(milliseconds: 500), () async {
+    try {
+      await NotificationService.initialize();
+    } catch (e) {
+      debugPrint("Notification başlatma notu: $e");
+    }
+
     try {
       await InAppPurchaseService.instance.initialize();
     } catch (_) {}
