@@ -445,6 +445,61 @@ def admin_set_user_vip(req: SetUserVipRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/admin/scan-custom-watchers")
+def admin_scan_custom_watchers():
+    """
+    Tüm kullanıcıların Firestore'daki özel linklerini (Custom Watchers) anlık tarar.
+    Takip eden kullanıcılara Firebase Push Bildirimi fırlatır!
+    """
+    try:
+        from scrapers.custom_url_watcher import CustomUrlWatcherService
+        from services.firebase_service import FirebaseNotificationService
+        from database import db
+
+        loaded_count = CustomUrlWatcherService.load_watchers_from_firestore()
+        updated_links = []
+        notifications_sent = 0
+
+        for watcher_id, watcher in list(db.custom_watchers.items()):
+            try:
+                has_update, message = CustomUrlWatcherService.scan_watcher_12pm(watcher)
+                title = f"🎯 Özel Link Takibi: {watcher.label}" if has_update else f"🔍 Özel Link Raporu: {watcher.label}"
+                
+                FirebaseNotificationService.send_push_notification(
+                    topic=f"watcher_{watcher.id}",
+                    title=title,
+                    body=message,
+                    data={"url": watcher.url, "watcher_id": watcher.id, "type": "custom_watcher"}
+                )
+                notifications_sent += 1
+
+                if has_update:
+                    updated_links.append({"id": watcher.id, "label": watcher.label, "url": watcher.url, "message": message})
+            except Exception as w_err:
+                print(f"Watcher scan error ({watcher_id}): {w_err}")
+
+        # Eğer taranan link varsa kamuradar_all konusuna da genel tarama özeti bildir
+        if notifications_sent > 0:
+            FirebaseNotificationService.send_push_notification(
+                topic="kamuradar_all",
+                title="📡 Özel Link Takipçisi Taraması Tamamlandı",
+                body=f"Özel takip linkleriniz kontrol edildi. Yeni duyurular ilgililerine iletildi.",
+                data={"type": "custom_watcher_batch"}
+            )
+
+        return {
+            "status": "success",
+            "message": f"{loaded_count} adet özel link tarandı, {notifications_sent} bildirim gönderildi.",
+            "scanned_count": loaded_count,
+            "updated_count": len(updated_links),
+            "notifications_sent": notifications_sent,
+            "updated_links": updated_links
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/admin/users")
 def admin_list_users():
     """

@@ -250,4 +250,16 @@ class ApiService {
       }
     } catch (_) {}
   }
+
+  // 7. Özel Linkleri Canlı Olarak Tara ve Takip Eden Kullanıcılara Push Bildirim Gönder
+  static Future<Map<String, dynamic>> scanCustomWatchersAndNotify() async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/api/admin/scan-custom-watchers"),
+      headers: _headers,
+    ).timeout(const Duration(seconds: 35));
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    }
+    throw Exception("Sunucu yanıt vermedi: ${response.statusCode}");
+  }
 }

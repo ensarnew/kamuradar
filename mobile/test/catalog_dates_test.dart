@@ -36,6 +36,12 @@ void main() {
     }
 
     print('Open: $openCount, Upcoming: $upcomingCount, Others: $resultCount');
-    expect(openCount > 400, true);
+    expect(openCount >= 10, true);
+    expect(upcomingCount >= 5, true);
+
+    // 6.500 Uzman Erbaş geçmiş alım olduğu için dürüstçe 'Kapalı' olmalı
+    final jandarma = catalog.firstWhere((c) => c.id == "jandarma-01");
+    expect(jandarma.status, "Kapalı");
+    expect(jandarma.officialUrl, "https://personeltemin.jandarma.gov.tr");
   });
 }

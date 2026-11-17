@@ -6,6 +6,7 @@ import '../services/cache_service.dart';
 import '../services/ad_service.dart';
 import '../services/notification_service.dart';
 import '../services/firebase_sync_service.dart';
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'admin_panel_screen.dart';
 
@@ -29,6 +30,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   int _versionTapCount = 0;
   DateTime? _lastTapTime;
   bool _isVip = false;
+  bool _isScanningWatchers = false;
   bool get _effectiveVip => widget.isVip || _isVip;
 
   @override
@@ -245,6 +247,66 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
   }
 
+  Future<void> _triggerCustomWatcherScan() async {
+    setState(() => _isScanningWatchers = true);
+    try {
+      final res = await ApiService.scanCustomWatchersAndNotify();
+      if (!mounted) return;
+      final scanned = res['scanned_count'] ?? 0;
+      final notifications = res['notifications_sent'] ?? 0;
+      final updated = res['updated_count'] ?? 0;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF131E33),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0xFF38BDF8), width: 1.2),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Color(0xFF10B981), size: 24),
+              SizedBox(width: 8),
+              Text(
+                "Özel Link Taraması",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          content: Text(
+            "📡 Özel kamu linkleri başarıyla tarandı!\n\n"
+            "• Taranan Link Sayısı: $scanned\n"
+            "• Tespit Edilen Değişiklik: $updated\n"
+            "• Gönderilen Push Bildirimi: $notifications\n\n"
+            "Özel linkleri takip eden kullanıcılara bildirim anında iletildi.",
+            style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13, height: 1.4),
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Tamam"),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppTheme.urgentRed,
+          content: Text("❌ Özel link tarama hatası: $e"),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isScanningWatchers = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -267,6 +329,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
           // 3. TAKİP EDİLEN İLAN & SINAVLAR (REKLAMLA DEĞİL - LİSTE VE RADAR AYARI)
           _buildJobAlarmsSection(),
+
+          const SizedBox(height: 16),
+
+          // 3.1 ÖZEL LİNK TARAMA & CANLI BİLDİRİM BUTONU
+          _buildCustomWatcherScanSection(),
 
           const SizedBox(height: 16),
 
@@ -558,6 +625,96 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               icon: const Icon(Icons.delete_sweep_outlined, size: 16, color: Color(0xFFEF4444)),
               label: const Text("Kurulu Alarmları Kapat", style: TextStyle(fontSize: 11, color: Color(0xFFEF4444))),
               onPressed: _resetAllAlarms,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 3.1 Özel Link Tarama & Canlı Bildirim Butonu
+  Widget _buildCustomWatcherScanSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131E33),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.podcasts, color: Color(0xFF38BDF8), size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Özel Link Takibi & Canlı Bildirim",
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFFF8FAFC)),
+                    ),
+                    Text(
+                      "Özel link takipçilerine anlık bildirim fırlatır",
+                      style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: Color(0xFF38BDF8)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Bu butona bastığınızda kullanıcıların sisteme eklediği tüm özel kamu linkleri (üniversite, belediye, bakanlık) anında taranır ve takip edenlere bildirim gider.",
+                    style: TextStyle(fontSize: 10, color: Color(0xFFCBD5E1), height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 2,
+              ),
+              onPressed: _isScanningWatchers ? null : _triggerCustomWatcherScan,
+              icon: _isScanningWatchers
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.wifi_tethering, size: 18),
+              label: Text(
+                _isScanningWatchers ? "Özel Linkler Taranıyor..." : "📡 Özel Linkleri Şimdi Tara & Bildirim Gönder",
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
             ),
           ),
         ],
