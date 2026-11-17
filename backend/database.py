@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Set
-from datetime import datetime
+from datetime import datetime, timedelta
 from models import (
     Announcement, AnnouncementCategory, ContentType, CustomUrlWatcher,
     FamilyPlan, FamilyMember, ExamScheduleItem, ExamStatus
@@ -616,7 +616,13 @@ class InMemoryDB:
             )
         ]
 
-        # 2. Örnek Açık İlanlar (VIP Bölümü)
+        # 2. Örnek Açık İlanlar (VIP Bölümü) - Güncel tarihe göre dinamik üretilir
+        now = datetime.now()
+        def _d(days_offset: int) -> str:
+            return (now + timedelta(days=days_offset)).strftime("%d.%m.%Y")
+        def _dt(days_offset: int) -> str:
+            return (now + timedelta(days=days_offset)).strftime("%d.%m.%Y 12:00")
+
         self.announcements = {
             "ann-01": Announcement(
                 id="ann-01",
@@ -626,14 +632,14 @@ class InMemoryDB:
                 content_type=ContentType.ILAN,
                 education_level="Lise",
                 kpss_status="KPSS'li",
-                exam_date="15.07.2026",
-                application_start="15.05.2026",
-                application_deadline="02.06.2026",
+                exam_date=_d(40),
+                application_start=_d(-2),
+                application_deadline=_d(16),
                 summary="En az lise mezunu, 27 yaşını bitirmemiş erkek adaylar arasından 2.500 uzman erbaş temin edilecek.",
                 requirements=["En az lise mezunu olmak", "01 Ocak 1999 ve sonrası doğumlu olmak", "En az 167 cm boyunda olmak"],
-                official_url="https://vatandas.jandarma.gov.tr/PTM/Giris",
-                published_at="15.05.2026 12:00",
-                scanned_at_12pm="15.05.2026 12:00",
+                official_url="https://personeltemin.jandarma.gov.tr",
+                published_at=_dt(-2),
+                scanned_at_12pm=_dt(-2),
                 is_hot=True,
                 is_premium_only=False
             ),
@@ -645,14 +651,14 @@ class InMemoryDB:
                 content_type=ContentType.ILAN,
                 education_level="Lisans",
                 kpss_status="KPSS'li",
-                exam_date="10.08.2026",
-                application_start="04.04.2026",
-                application_deadline="25.04.2026",
+                exam_date=_d(45),
+                application_start=_d(-3),
+                application_deadline=_d(18),
                 summary="Lisans mezunu 8.160, önlisans mezunu 2.040 olmak üzere toplam 10.000 polis alımı gerçekleştirilecek.",
                 requirements=["Lisans P3 en az 60, Önlisans P93 en az 65 puan", "30 yaşından gün almamış olmak"],
                 official_url="https://www.pa.edu.tr",
-                published_at="04.04.2026 12:00",
-                scanned_at_12pm="04.04.2026 12:00",
+                published_at=_dt(-3),
+                scanned_at_12pm=_dt(-3),
                 is_hot=True,
                 is_premium_only=False
             ),
@@ -664,14 +670,14 @@ class InMemoryDB:
                 content_type=ContentType.MULAKAT,
                 education_level="Ön Lisans",
                 kpss_status="KPSS'li",
-                exam_date="20.06.2026",
-                application_start="10.03.2026",
-                application_deadline="28.03.2026",
+                exam_date=_d(30),
+                application_start=_d(-4),
+                application_deadline=_d(14),
                 summary="Sözlü mülakat tarihleri ve adliye bazlı evrak teslim listeleri yayımlandı.",
                 requirements=["Sözlü mülakata katılmaya hak kazanmış olmak", "Gerekli güvenlik soruşturması evraklarını teslim etmek"],
                 official_url="https://pgm.adalet.gov.tr",
-                published_at="10.03.2026 12:00",
-                scanned_at_12pm="10.03.2026 12:00",
+                published_at=_dt(-4),
+                scanned_at_12pm=_dt(-4),
                 is_hot=True,
                 is_premium_only=False
             ),
@@ -683,14 +689,14 @@ class InMemoryDB:
                 content_type=ContentType.SINAV,
                 education_level="Lisans",
                 kpss_status="Muaf",
-                exam_date="19.07.2026",
-                application_start="03.05.2026",
-                application_deadline="15.05.2026",
+                exam_date=_d(50),
+                application_start=_d(-1),
+                application_deadline=_d(20),
                 summary="Genel Yetenek-Genel Kültür, Eğitim Bilimleri ve Alan Bilgisi oturumları başvuru ve sınav takvimi.",
                 requirements=["Lisans mezunu veya son sınıf öğrencisi olmak"],
                 official_url="https://ais.osym.gov.tr",
-                published_at="03.05.2026 12:00",
-                scanned_at_12pm="03.05.2026 12:00",
+                published_at=_dt(-1),
+                scanned_at_12pm=_dt(-1),
                 is_hot=True,
                 is_premium_only=False
             ),
@@ -703,13 +709,13 @@ class InMemoryDB:
                 education_level="Ön Lisans",
                 kpss_status="KPSS'li",
                 exam_date=None,
-                application_start="01.02.2026",
-                application_deadline="10.02.2026",
+                application_start=_d(-5),
+                application_deadline=_d(10),
                 summary="Uygulamalı parkur ve mülakat sonuçlarına göre asil ve yedek aday listesi ilan edildi.",
                 requirements=["Asil listede yer alan adayların atama evraklarını teslim etmesi"],
                 official_url="https://kariyer.ibb.istanbul",
-                published_at="20.02.2026 12:00",
-                scanned_at_12pm="20.02.2026 12:00",
+                published_at=_dt(-5),
+                scanned_at_12pm=_dt(-5),
                 is_hot=False,
                 is_premium_only=True
             ),
@@ -721,14 +727,14 @@ class InMemoryDB:
                 content_type=ContentType.ILAN,
                 education_level="Lisans",
                 kpss_status="Muaf",
-                exam_date="22.04.2026",
-                application_start="01.04.2026",
-                application_deadline="15.04.2026",
+                exam_date=_d(35),
+                application_start=_d(-2),
+                application_deadline=_d(15),
                 summary="Mühendislik, Mimarlık ve Fen Edebiyat fakültelerine ALES puanı ile akademik kadro alımı.",
                 requirements=["ALES'ten en az 70 puan almış olmak", "Yabancı dil (YDS/YÖKDİL) en az 50 puan"],
                 official_url="https://itu.edu.tr",
-                published_at="01.04.2026 12:00",
-                scanned_at_12pm="01.04.2026 12:00",
+                published_at=_dt(-2),
+                scanned_at_12pm=_dt(-2),
                 is_hot=False,
                 is_premium_only=True
             ),
@@ -741,13 +747,13 @@ class InMemoryDB:
                 education_level="Okuryazar",
                 kpss_status="KPSS'siz",
                 exam_date=None,
-                application_start="10.08.2026",
-                application_deadline="20.08.2026",
+                application_start=_d(-1),
+                application_deadline=_d(12),
                 summary="81 ilde okullara ve kamu binalarına noter kurası ile KPSS şartsız TYP personeli temin edilecek.",
                 requirements=["İŞKUR'a kayıtlı işsiz olmak", "Aynı hanede TYP yararlanıcısı bulunmamak"],
                 official_url="https://esube.iskur.gov.tr",
-                published_at="10.08.2026 12:00",
-                scanned_at_12pm="10.08.2026 12:00",
+                published_at=_dt(-1),
+                scanned_at_12pm=_dt(-1),
                 is_hot=False,
                 is_premium_only=True
             ),
@@ -759,14 +765,14 @@ class InMemoryDB:
                 content_type=ContentType.SINAV,
                 education_level="Lisans",
                 kpss_status="KPSS'li",
-                exam_date="15.09.2026",
-                application_start="01.08.2026",
-                application_deadline="15.08.2026",
+                exam_date=_d(42),
+                application_start=_d(-3),
+                application_deadline=_d(17),
                 summary="KPSS P3 puanı ve FEAST bilgisayar destekli seçme sınavı ile yüksek maaşlı kontrolör alımı.",
                 requirements=["KPSS P3 puan türünden en az 70 puan", "İngilizce ICAO seviye 4 yeterliliği"],
                 official_url="https://dhmi.gov.tr",
-                published_at="01.08.2026 12:00",
-                scanned_at_12pm="01.08.2026 12:00",
+                published_at=_dt(-3),
+                scanned_at_12pm=_dt(-3),
                 is_hot=False,
                 is_premium_only=True
             ),
@@ -777,7 +783,7 @@ class InMemoryDB:
             "watch-01": CustomUrlWatcher(
                 id="watch-01",
                 user_id="user-demo-ensar",
-                url="https://vatandas.jandarma.gov.tr/PTM/Giris",
+                url="https://personeltemin.jandarma.gov.tr",
                 label="Jandarma Personel Temin Duyuruları",
                 last_checked_12pm="Bugün 12:00",
                 has_update=False

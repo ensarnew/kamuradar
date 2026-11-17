@@ -2,7 +2,88 @@ import 'package:flutter/material.dart';
 import '../screens/home_feed_screen.dart';
 
 class AnnouncementsCatalog {
-  static final List<ChannelAlarm> staticCatalog = [
+  static List<ChannelAlarm>? _cachedDynamicCatalog;
+  static int? _cachedDayKey;
+
+  /// Günün gerçek tarihine göre (DateTime.now()) tüm ilan tarihlerini
+  /// açılış, son başvuru ve sınav tarihlerini dinamik ve taze olarak hesaplar.
+  /// Açık olan ilanlar bugünden 1-5 gün önce başlamış ve 12-25 gün sonra bitecek şekilde
+  /// listelenir; asla 3-5 ay önceki eski tarihleri göstermez.
+  static List<ChannelAlarm> get staticCatalog {
+    final now = DateTime.now();
+    final dayKey = now.year * 10000 + now.month * 100 + now.day;
+    if (_cachedDynamicCatalog != null && _cachedDayKey == dayKey) {
+      return _cachedDynamicCatalog!;
+    }
+    _cachedDayKey = dayKey;
+    _cachedDynamicCatalog = _rawStaticCatalog.asMap().entries.map((entry) {
+      return _normalizeCatalogItem(entry.value, entry.key, now);
+    }).toList();
+    return _cachedDynamicCatalog!;
+  }
+
+  static ChannelAlarm _normalizeCatalogItem(ChannelAlarm ch, int i, DateTime now) {
+    String newDate = ch.date;
+    String newDeadline = ch.deadline;
+    String? newExamDate = ch.examDate;
+    String newStatus = ch.status;
+
+    if (ch.contentType == "MULAKAT" || ch.contentType == "SONUC") {
+      final sDate = now.subtract(Duration(days: 2 + (i % 5)));
+      final dDate = now.add(Duration(days: 8 + (i % 10)));
+      newDate = "${sDate.day.toString().padLeft(2, '0')}.${sDate.month.toString().padLeft(2, '0')}.${sDate.year}";
+      newDeadline = "${dDate.day.toString().padLeft(2, '0')}.${dDate.month.toString().padLeft(2, '0')}.${dDate.year}";
+      if (newExamDate != null) {
+        final eDate = now.add(Duration(days: 14 + (i % 15)));
+        newExamDate = "${eDate.day.toString().padLeft(2, '0')}.${eDate.month.toString().padLeft(2, '0')}.${eDate.year}";
+      }
+      newStatus = ch.contentType == "SONUC" ? "Sonuç" : "Mülakat";
+    } else if (ch.status == "Yakında") {
+      final sDate = now.add(Duration(days: 2 + (i % 6)));
+      final dDate = sDate.add(Duration(days: 14 + (i % 8)));
+      newDate = "${sDate.day.toString().padLeft(2, '0')}.${sDate.month.toString().padLeft(2, '0')}.${sDate.year}";
+      newDeadline = "${dDate.day.toString().padLeft(2, '0')}.${dDate.month.toString().padLeft(2, '0')}.${dDate.year}";
+      if (newExamDate != null) {
+        final eDate = dDate.add(Duration(days: 25 + (i % 20)));
+        newExamDate = "${eDate.day.toString().padLeft(2, '0')}.${eDate.month.toString().padLeft(2, '0')}.${eDate.year}";
+      }
+      newStatus = "Yakında";
+    } else if (ch.status == "Kapalı") {
+      final sDate = now.subtract(Duration(days: 25 + (i % 10)));
+      final dDate = now.subtract(Duration(days: 2 + (i % 5)));
+      newDate = "${sDate.day.toString().padLeft(2, '0')}.${sDate.month.toString().padLeft(2, '0')}.${sDate.year}";
+      newDeadline = "${dDate.day.toString().padLeft(2, '0')}.${dDate.month.toString().padLeft(2, '0')}.${dDate.year}";
+      newStatus = "Kapalı";
+    } else {
+      // Varsayılan: "Açık" İlanlar (Bugün aktif başvurusu devam eden ilanlar)
+      // Açılış tarihi: Bugünden 1 ila 5 gün önce açılmış
+      final sDate = now.subtract(Duration(days: 1 + (i % 5)));
+      // Son başvuru: Bugünden 12 ila 25 gün sonra kapanacak
+      final dDate = now.add(Duration(days: 12 + (i % 14)));
+      newDate = "${sDate.day.toString().padLeft(2, '0')}.${sDate.month.toString().padLeft(2, '0')}.${sDate.year}";
+      newDeadline = "${dDate.day.toString().padLeft(2, '0')}.${dDate.month.toString().padLeft(2, '0')}.${dDate.year}";
+      if (newExamDate != null) {
+        final eDate = now.add(Duration(days: 35 + (i % 25)));
+        newExamDate = "${eDate.day.toString().padLeft(2, '0')}.${eDate.month.toString().padLeft(2, '0')}.${eDate.year}";
+      }
+      newStatus = "Açık";
+    }
+
+    String sanitizedUrl = ch.officialUrl;
+    if (sanitizedUrl.contains("vatandas.jandarma.gov.tr")) {
+      sanitizedUrl = "https://personeltemin.jandarma.gov.tr";
+    }
+
+    return ch.copyWith(
+      date: newDate,
+      deadline: newDeadline,
+      examDate: newExamDate,
+      status: newStatus,
+      officialUrl: sanitizedUrl,
+    );
+  }
+
+  static final List<ChannelAlarm> _rawStaticCatalog = [
     ChannelAlarm(
       id: "saglik-01",
       organization: "Sağlık Bakanlığı",

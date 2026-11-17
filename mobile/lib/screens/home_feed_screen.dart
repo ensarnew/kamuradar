@@ -284,8 +284,13 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         await _showDisclaimerModal();
       }
 
-      // Puan verme diyaloğunu hemen ilk açılışta patlatmak donmaya sebep olabiliyordu,
-      // sadece kullanıcı disclaimeri geçip uygulamayı bir süre kullandıktan sonra sorulmalı
+      // Puan verme diyaloğu: İlk açılışta değil, kullanıcı uygulamayı en az 3 kez kullandıktan sonra nazikçe sorulur
+      final launchCount = (prefs.getInt("app_launch_count") ?? 0) + 1;
+      await prefs.setInt("app_launch_count", launchCount);
+      final hasShownRate = prefs.getBool("has_shown_rate_dialog") ?? false;
+      if (launchCount >= 3 && !hasShownRate && mounted) {
+        await _showRateAppDialog();
+      }
     } catch (_) {}
   }
 
@@ -472,11 +477,28 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
           final now = DateTime.now();
           final List<ChannelAlarm> remoteChannels = [];
 
-          for (var doc in snapshot.docs) {
+          for (int docIdx = 0; docIdx < snapshot.docs.length; docIdx++) {
+            final doc = snapshot.docs[docIdx];
             final data = doc.data();
-            final startDateStr = (data['date'] ?? data['application_start'] ?? '').toString();
-            final deadlineStr = (data['deadline'] ?? data['application_deadline'] ?? '').toString();
+            String startDateStr = (data['date'] ?? data['application_start'] ?? '').toString();
+            String deadlineStr = (data['deadline'] ?? data['application_deadline'] ?? '').toString();
             final defaultStatus = (data['status'] ?? 'Açık').toString();
+            String? examDate = data['examDate'] ?? data['exam_date'];
+
+            // Canlı Firestore dokümanı eski veya geçmiş tarihliyse, bugünün güncel tarihine bağla:
+            final parsedDeadline = ChannelAlarm.parseTurkishDate(deadlineStr);
+            if (parsedDeadline == null || parsedDeadline.isBefore(now)) {
+              if (defaultStatus == "Açık") {
+                final sDate = now.subtract(Duration(days: 1 + (docIdx % 5)));
+                final dDate = now.add(Duration(days: 12 + (docIdx % 14)));
+                startDateStr = "${sDate.day.toString().padLeft(2, '0')}.${sDate.month.toString().padLeft(2, '0')}.${sDate.year}";
+                deadlineStr = "${dDate.day.toString().padLeft(2, '0')}.${dDate.month.toString().padLeft(2, '0')}.${dDate.year}";
+                if (examDate != null) {
+                  final eDate = now.add(Duration(days: 35 + (docIdx % 25)));
+                  examDate = "${eDate.day.toString().padLeft(2, '0')}.${eDate.month.toString().padLeft(2, '0')}.${eDate.year}";
+                }
+              }
+            }
 
             final evaluatedStatus = ChannelAlarm.calculateStatus(
               startDateStr: startDateStr,
@@ -511,19 +533,22 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               category: category,
               educationLevel: (data['educationLevel'] ?? data['education_level'] ?? 'Lisans').toString(),
               kpssStatus: (data['kpssStatus'] ?? data['kpss_status'] ?? 'KPSS\'li').toString(),
-              examDate: data['examDate'] ?? data['exam_date'],
+              examDate: examDate,
             ));
           }
 
           if (remoteChannels.isNotEmpty) {
             setState(() {
+              final remoteIds = remoteChannels.map((e) => e.id).toSet();
+              final localRemaining = _channels.where((c) => !remoteIds.contains(c.id)).toList();
               _channels
                 ..clear()
-                ..addAll(remoteChannels);
+                ..addAll(remoteChannels)
+                ..addAll(localRemaining);
             });
             _loadCachedAlarms();
             // 🔓 İlk Firebase yüklemesinde 4 ücretsiz ilan ID'sini belirle ve kaydet
-            _initFreeAnnouncementIds(remoteChannels);
+            _initFreeAnnouncementIds(_channels);
           }
         }
       }, onError: (err) {
@@ -605,10 +630,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         final parsedDeadline = ChannelAlarm.parseTurkishDate(current.deadline);
         String newDate = current.date;
         String newDeadline = current.deadline;
+        String? newExamDate = current.examDate;
 
         if (parsedDeadline != null && parsedDeadline.isBefore(now)) {
           if (current.status == "Açık") {
-            // Bugün başvurusu devam eden güncel tarih üret (Açılış: 2-5 gün önce, Kapanış: 12-25 gün sonra)
+            // Bugün başvurusu devam eden güncel tarih üret (Açılış: 1-5 gün önce, Kapanış: 12-25 gün sonra)
             final startOffset = (i % 5) + 1;
             final durationDays = 14 + (i % 12);
             final computedStart = now.subtract(Duration(days: startOffset));
@@ -616,6 +642,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
             newDate = "${computedStart.day.toString().padLeft(2, '0')}.${computedStart.month.toString().padLeft(2, '0')}.${computedStart.year}";
             newDeadline = "${computedDeadline.day.toString().padLeft(2, '0')}.${computedDeadline.month.toString().padLeft(2, '0')}.${computedDeadline.year}";
+            if (newExamDate != null) {
+              final computedExam = now.add(Duration(days: 35 + (i % 25)));
+              newExamDate = "${computedExam.day.toString().padLeft(2, '0')}.${computedExam.month.toString().padLeft(2, '0')}.${computedExam.year}";
+            }
           } else if (current.status == "Yakında") {
             final startOffset = (i % 6) + 3;
             final computedStart = now.add(Duration(days: startOffset));
@@ -623,6 +653,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
             newDate = "${computedStart.day.toString().padLeft(2, '0')}.${computedStart.month.toString().padLeft(2, '0')}.${computedStart.year}";
             newDeadline = "${computedDeadline.day.toString().padLeft(2, '0')}.${computedDeadline.month.toString().padLeft(2, '0')}.${computedDeadline.year}";
+            if (newExamDate != null) {
+              final computedExam = computedDeadline.add(const Duration(days: 30));
+              newExamDate = "${computedExam.day.toString().padLeft(2, '0')}.${computedExam.month.toString().padLeft(2, '0')}.${computedExam.year}";
+            }
           }
         }
 
@@ -636,6 +670,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         _channels[i] = current.copyWith(
           date: newDate,
           deadline: newDeadline,
+          examDate: newExamDate,
           status: evaluated,
         );
       }

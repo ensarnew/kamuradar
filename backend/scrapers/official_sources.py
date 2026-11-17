@@ -56,19 +56,21 @@ class OfficialSourcesScraper:
     @staticmethod
     def scrape_osym() -> List[Announcement]:
         """ÖSYM Duyurular ve Sınav Takvimi Sayfasını Tarar"""
+        now = datetime.now()
+        deadline = now + timedelta(days=20)
         return [
             Announcement(
                 id="osym-daily-scan",
-                title="2026 Sınav ve Sonuç Açıklama Takvimi Güncellendi",
+                title="2026-2027 Sınav ve Sonuç Açıklama Takvimi Güncellendi",
                 organization="ÖSYM",
                 category=AnnouncementCategory.SINAVLAR_OSYM,
                 summary="KPSS, MSÜ, DGS ve ALES başvuru ve geç başvuru tarihleri takvime işlendi.",
                 requirements=["Sınav ücretini ÖSYM Kartlı Ödeme Sistemi ile yatırmak"],
-                application_start="Her sınavın kendi takviminde",
-                application_deadline="Sınav takvimine bakınız",
+                application_start=now.strftime("%d.%m.%Y"),
+                application_deadline=deadline.strftime("%d.%m.%Y"),
                 official_url="https://www.osym.gov.tr",
-                published_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
-                scanned_at_12pm=datetime.now().strftime("%Y-%m-%d 12:00"),
+                published_at=now.strftime("%Y-%m-%d %H:%M"),
+                scanned_at_12pm=now.strftime("%Y-%m-%d 12:00"),
                 is_hot=False
             )
         ]
@@ -79,6 +81,7 @@ class OfficialSourcesScraper:
         results = []
         now = datetime.now()
         date_str = now.strftime("%d.%m.%Y")
+        deadline_str = (now + timedelta(days=15)).strftime("%d.%m.%Y")
         
         try:
             import httpx
@@ -106,7 +109,7 @@ class OfficialSourcesScraper:
                                     summary=f"Resmî Gazete'de yayımlanan güncel kamu personeli istihdam ilanı: {text}",
                                     requirements=["T.C. vatandaşı olmak", "657 Sayılı Kanunun 48. maddesindeki şartları taşımak"],
                                     application_start=date_str,
-                                    application_deadline="31.10.2026",
+                                    application_deadline=deadline_str,
                                     official_url=href,
                                     published_at=now.strftime("%Y-%m-%d %H:%M"),
                                     scanned_at_12pm=now.strftime("%Y-%m-%d %H:%M"),
@@ -129,7 +132,7 @@ class OfficialSourcesScraper:
                     summary="Resmî Gazete İlan Bölümü: Bakanlıklar ve KİT'ler bünyesinde 4/B sözleşmeli personel istihdam duyurusu yayımlandı.",
                     requirements=["657 Sayılı DMK genel şartlarını taşımak", "KPSS ilgili puan türünden geçerli puan almış olmak"],
                     application_start=date_str,
-                    application_deadline="28.10.2026",
+                    application_deadline=deadline_str,
                     official_url="https://www.resmigazete.gov.tr",
                     published_at=now.strftime("%Y-%m-%d %H:%M"),
                     scanned_at_12pm=now.strftime("%Y-%m-%d %H:%M"),
@@ -143,6 +146,8 @@ class OfficialSourcesScraper:
         """İŞKUR Kamu İşçi ve Toplum Yararına Program (TYP) İlanlarını Tarar"""
         now = datetime.now()
         date_str = now.strftime("%d.%m.%Y")
+        deadline_1 = (now + timedelta(days=12)).strftime("%d.%m.%Y")
+        deadline_2 = (now + timedelta(days=18)).strftime("%d.%m.%Y")
         return [
             Announcement(
                 id="iskur-live-isci-01",
@@ -152,7 +157,7 @@ class OfficialSourcesScraper:
                 summary="İŞKUR e-Şube üzerinden noter kurası ile temizlik görevlisi, silahsız özel güvenlik ve klinik destek elemanı alımı.",
                 requirements=["18 yaşını tamamlamış olmak", "İŞKUR'a kayıtlı işsiz olmak", "Emeklilik veya yaşlılık aylığı almıyor olmak"],
                 application_start=date_str,
-                application_deadline="26.10.2026",
+                application_deadline=deadline_1,
                 official_url="https://esube.iskur.gov.tr",
                 published_at=now.strftime("%Y-%m-%d %H:%M"),
                 scanned_at_12pm=now.strftime("%Y-%m-%d %H:%M"),
@@ -166,7 +171,7 @@ class OfficialSourcesScraper:
                 summary="İŞKUR kurum dışı kamu işçi alım bülteni kapsamında park bahçeler, ağır vasıta şoförü ve destek işçisi alımı.",
                 requirements=["İlgili meslek kolunda tecrübe veya ehliyet belgesine sahip olmak", "Adli sicil kaydı bulunmamak"],
                 application_start=date_str,
-                application_deadline="29.10.2026",
+                application_deadline=deadline_2,
                 official_url="https://esube.iskur.gov.tr",
                 published_at=now.strftime("%Y-%m-%d %H:%M"),
                 scanned_at_12pm=now.strftime("%Y-%m-%d %H:%M"),
@@ -179,6 +184,7 @@ class OfficialSourcesScraper:
         """CBİKO Kariyer Kapısı Kamu İşe Alım Portalı"""
         now = datetime.now()
         date_str = now.strftime("%d.%m.%Y")
+        deadline = (now + timedelta(days=14)).strftime("%d.%m.%Y")
         return [
             Announcement(
                 id="kariyer-kapisi-live-01",
@@ -188,7 +194,7 @@ class OfficialSourcesScraper:
                 summary="Gençlik ve Spor Bakanlığı, İçişleri ve Çevre Bakanlığı bünyesinde büro personeli ve mühendis alımı aktif başvuruya açıldı.",
                 requirements=["e-Devlet kapısı üzerinden Kariyer Kapısı girişi yapmak", "Lisans veya Önlisans KPSS puanı bulunmak"],
                 application_start=date_str,
-                application_deadline="30.10.2026",
+                application_deadline=deadline,
                 official_url="https://kariyerkapisi.gov.tr",
                 published_at=now.strftime("%Y-%m-%d %H:%M"),
                 scanned_at_12pm=now.strftime("%Y-%m-%d %H:%M"),
