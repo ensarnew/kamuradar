@@ -43,6 +43,8 @@ class ChannelAlarm {
   final String educationLevel;  // Okuryazar, Lise, Ön Lisans, Lisans
   final String kpssStatus;      // KPSS'li, KPSS'siz, Muaf
   final String? examDate;
+  DateTime? _cachedParsedDate;
+  DateTime get parsedDate => _cachedParsedDate ??= (parseTurkishDate(date) ?? DateTime(2020));
 
   Color get statusColor {
     switch (status) {
@@ -941,11 +943,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
     // ⚡ En Güncel İlanlar: En son eklenenler ve en yeni tarihli olanlar en başta listelenir
     if (_sortByNewest) {
-      list.sort((a, b) {
-        final aDate = ChannelAlarm.parseTurkishDate(a.date) ?? DateTime(2020);
-        final bDate = ChannelAlarm.parseTurkishDate(b.date) ?? DateTime(2020);
-        return bDate.compareTo(aDate);
-      });
+      list.sort((a, b) => b.parsedDate.compareTo(a.parsedDate));
     }
 
     // 🔓 Ücretsiz kullanıcılar için açık olan 4 sabit ilan en başta gösterilsin
@@ -1902,6 +1900,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredChannels = _filteredChannels;
     return Scaffold(
       backgroundColor: const Color(0xFF091122),
       appBar: AppBar(
@@ -2201,10 +2200,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 children: [
                   Text(
                     _selectedTabIndex == 0
-                        ? "Aktif Alım İlanları (${_filteredChannels.length})"
+                        ? "Aktif Alım İlanları (${filteredChannels.length})"
                         : _selectedTabIndex == 1
-                            ? "Sınav & Başvuru Takvimi (${_filteredChannels.length})"
-                            : "Sonuçlar & Mülakatlar (${_filteredChannels.length})",
+                            ? "Sınav & Başvuru Takvimi (${filteredChannels.length})"
+                            : "Sonuçlar & Mülakatlar (${filteredChannels.length})",
                     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   Text(
@@ -2217,7 +2216,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
             const SizedBox(height: 8),
 
             // Paywall Hatırlatma Şeridi (İlk 4 ilan ücretsiz)
-            if (!_effectiveVip && _filteredChannels.length > 4)
+            if (!_effectiveVip && filteredChannels.length > 4)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                 child: Container(
@@ -2250,7 +2249,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                             ),
                             const SizedBox(height: 1),
                             Text(
-                              "Kalan ${_filteredChannels.length - 4} ilanın detayları için VIP'e geçin.",
+                              "Kalan ${filteredChannels.length - 4} ilanın detayları için VIP'e geçin.",
                               style: const TextStyle(color: Colors.white70, fontSize: 10),
                             ),
                           ],
@@ -2284,9 +2283,9 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _filteredChannels.length,
+              itemCount: filteredChannels.length,
               itemBuilder: (context, index) {
-                final ch = _filteredChannels[index];
+                final ch = filteredChannels[index];
                 final isLocked = _isChannelLocked(ch);
 
                 final cardBody = InkWell(

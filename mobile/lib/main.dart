@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/home_feed_screen.dart';
 import 'screens/custom_watcher_screen.dart';
 import 'screens/family_subscription_screen.dart';
 import 'screens/profile_settings_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/auth_service.dart';
 import 'services/in_app_purchase_service.dart';
 import 'services/notification_service.dart';
 import 'services/ad_service.dart';
@@ -70,23 +73,37 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   bool? _isAuthenticated;
+  StreamSubscription<User?>? _authSubscription;
 
   @override
   void initState() {
     super.initState();
     _checkAuth();
+    _authSubscription = AuthService.authStateChanges.listen((user) {
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = user != null;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _checkAuth() async {
-    final hasAuth = await FirebaseSyncService.hasCompletedAuth();
-    if (!hasAuth) {
-      // Yeni kullanıcılar ve Google Play inceleme botları için doğrudan misafir modunda başlat
-      // Böylece açılışta kilitli veya yanıt vermeyen giriş ekranı engeli oluşmaz.
-      await FirebaseSyncService.setGuestMode(true);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      if (mounted) setState(() => _isAuthenticated = true);
+      return;
     }
+    // Google oturumu yoksa, kullanıcıya girişte Google ile giriş sor
     if (mounted) {
       setState(() {
-        _isAuthenticated = true;
+        _isAuthenticated = false;
       });
     }
   }
