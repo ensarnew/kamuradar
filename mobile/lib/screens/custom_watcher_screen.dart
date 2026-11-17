@@ -73,12 +73,12 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
     ),
     CustomLinkWatcher(
       id: "watch-02",
-      url: "https://personeltemin.msb.gov.tr/duyurular",
-      label: "MSB Personel Temin Duyurular",
+      url: "https://personeltemin.msb.gov.tr",
+      label: "MSB Personel Temin (Subay, Astsubay & MSÜ)",
       lastChecked12pm: "Gündüz Taraması (10:00 - 22:00)",
       hasUpdate: false,
-      aiCriteria: "Subay, Astsubay, MSÜ",
-      targetKeywords: ["Subay", "Astsubay", "MSÜ"],
+      aiCriteria: "Subay, Astsubay, MSÜ, Uzman Erbaş",
+      targetKeywords: ["Subay", "Astsubay", "MSÜ", "Uzman Erbaş"],
       isNotificationActive: true,
       lastScannedResult: "Gündüz periyodu (10:00 - 22:00) nöbette",
     ),
@@ -127,6 +127,14 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
                 url: "https://personeltemin.jandarma.gov.tr",
                 label: "Jandarma & JSGA Personel Alımı Nöbetçisi",
                 targetKeywords: ["jandarma", "personel", "uzman", "subay", "astsubay", "jsga"],
+              );
+            }
+            // Eski hatalı MSB duyurular URL'sini çalışan ana personel temin portalına güncelle
+            if (current.url.contains("personeltemin.msb.gov.tr/duyurular")) {
+              current = current.copyWith(
+                url: "https://personeltemin.msb.gov.tr",
+                label: "MSB Personel Temin (Subay, Astsubay & MSÜ)",
+                targetKeywords: ["Subay", "Astsubay", "MSÜ", "Uzman Erbaş"],
               );
             }
             // Eski sürümlerden veya alakasız sitelerden kalan hatalı pozitif sonuçları temizle
@@ -382,6 +390,9 @@ class _CustomWatcherScreenState extends State<CustomWatcherScreen> {
     String targetUrl = url;
     if (targetUrl.contains("vatandas.jandarma.gov.tr")) {
       targetUrl = "https://personeltemin.jandarma.gov.tr";
+    }
+    if (targetUrl.contains("personeltemin.msb.gov.tr/duyurular")) {
+      targetUrl = "https://personeltemin.msb.gov.tr";
     }
     final uri = Uri.parse(targetUrl);
     try {

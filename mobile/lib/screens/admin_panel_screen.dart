@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
 import '../services/firebase_sync_service.dart';
+import '../services/api_service.dart';
 import 'home_feed_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
@@ -39,6 +40,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   bool _isBotRunning = false;
   bool _isSyncingAnnouncements = false;
+  bool _isScanningCustomWatchers = false;
   int _activeListingCount = 118;
   final int _purgedCount = 17;
 
@@ -233,6 +235,65 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         content: Text(message),
       ),
     );
+  }
+
+  // Özel Link Takipçilerini Canlı Tara ve Push Bildirimi Gönder
+  Future<void> _scanCustomWatchersLive() async {
+    setState(() => _isScanningCustomWatchers = true);
+    try {
+      final res = await ApiService.scanCustomWatchersAndNotify();
+      if (!mounted) return;
+      final scanned = res['scanned_count'] ?? 0;
+      final notifications = res['notifications_sent'] ?? 0;
+      final updated = res['updated_count'] ?? 0;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF0F172A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Colors.amber, width: 1.5),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 24),
+              SizedBox(width: 8),
+              Text("Özel Link Taraması", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            "📡 Özel link takibi canlı olarak tarandı ve ilgililerine bildirildi!\n\n"
+            "• Taranan Özel Link: $scanned adet\n"
+            "• Tespit Edilen Değişiklik: $updated adet\n"
+            "• Gönderilen Push Bildirimi: $notifications adet\n\n"
+            "Takip eden kullanıcılara Firebase üzerinden push bildirimleri fırlatıldı.",
+            style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13, height: 1.4),
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: const Color(0xFF0F172A),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Tamam", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppTheme.urgentRed,
+          content: Text("❌ Özel link tarama hatası: $e"),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isScanningCustomWatchers = false);
+    }
   }
 
   // Hazır Şablonu Tek Tıkla Gönder
@@ -461,6 +522,101 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   ),
                 ),
               ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // 1.5 📡 ÖZEL LİNK TAKİPÇİLERİ CANLI TARAMA & BİLDİRİM (YÖNETİCİ BUTONU)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF38BDF8), width: 1.5),
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFF38BDF8).withValues(alpha: 0.15), blurRadius: 12, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0284C7).withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.podcasts, color: Color(0xFF38BDF8), size: 22),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Özel Link Takipçilerini Canlı Tara & Bildir",
+                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.white),
+                            ),
+                            Text(
+                              "Kullanıcıların özel takip linklerini canlı tara ve FCM push ilet",
+                              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 16, color: Color(0xFF38BDF8)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "Firestore'daki tüm özel linkleri (belediyeler, üniversiteler, bakanlıklar) canlı olarak tarar ve takip eden kullanıcılara Firebase push bildirimi fırlatır.",
+                            style: TextStyle(fontSize: 11, color: Color(0xFFCBD5E1), height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: _isScanningCustomWatchers ? null : _scanCustomWatchersLive,
+                      icon: _isScanningCustomWatchers
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.wifi_tethering, size: 20),
+                      label: Text(
+                        _isScanningCustomWatchers
+                            ? "Özel Linkler Taranıyor ve Bildirim Gönderiliyor..."
+                            : "📡 Özel Linkleri Şimdi Tara & Takipçilere Bildir",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 20),

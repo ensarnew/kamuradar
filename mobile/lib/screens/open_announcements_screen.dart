@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/announcement.dart';
 import '../theme/app_theme.dart';
+import '../data/announcements_catalog.dart';
 
 class OpenAnnouncementsScreen extends StatefulWidget {
   final bool isVip;
@@ -18,67 +19,38 @@ class OpenAnnouncementsScreen extends StatefulWidget {
 }
 
 class _OpenAnnouncementsScreenState extends State<OpenAnnouncementsScreen> {
-  final List<Announcement> _vipAnnouncements = [
-    Announcement(
-      id: "jnd-01",
-      title: "Jandarma 2.500 Uzman Erbaş Alımı",
-      organization: "Jandarma Genel Komutanlığı",
-      category: "Jandarma",
-      summary: "Asayiş, komando ve sıhhiye branşlarında en az lise mezunu adaylar istihdam edilecektir.",
-      requirements: ["En az lise mezunu olmak", "27 yaşını aşmamak"],
-      applicationStart: "10.09.2026",
-      applicationDeadline: "28.09.2026",
-      officialUrl: "https://vatandas.jandarma.gov.tr/PTM/Giris",
-      publishedAt: "2026-09-10",
-      scannedAt12pm: "Bugün 12:00",
-      isHot: true,
-    ),
-    Announcement(
-      id: "msu-02",
-      title: "MSÜ Harp Okulları ve Astsubay MYO Temini",
-      organization: "Milli Savunma Bakanlığı (MSÜ)",
-      category: "MSÜ",
-      summary: "2026-MSÜ sınavı sonrası askeri öğrenci aday belirleme süreci ve fiziki yeterlilik parkuru.",
-      requirements: ["En fazla 20 yaşında olmak", "MSÜ sınavına girmiş olmak"],
-      applicationStart: "01.10.2026",
-      applicationDeadline: "25.10.2026",
-      officialUrl: "https://personeltemin.msb.gov.tr",
-      publishedAt: "2026-09-12",
-      scannedAt12pm: "Bugün 12:00",
-      isHot: true,
-    ),
-    Announcement(
-      id: "pomem-03",
-      title: "32. Dönem POMEM 10.000 Polis Memuru Alımı",
-      organization: "Polis Akademisi Başkanlığı",
-      category: "POMEM",
-      summary: "8.000 lisans, 2.000 önlisans mezunları arasından polis adayı alımı şartları.",
-      requirements: ["KPSS P3 en az 60, P93 en az 65", "30 yaşından gün almamak"],
-      applicationStart: "20.09.2026",
-      applicationDeadline: "05.10.2026",
-      officialUrl: "https://www.pa.edu.tr",
-      publishedAt: "2026-09-08",
-      scannedAt12pm: "Bugün 12:00",
-      isHot: true,
-    ),
-    Announcement(
-      id: "saglik-04",
-      title: "Sağlık Bakanlığı 18.000 Sözleşmeli Personel & İşçi",
-      organization: "Sağlık Bakanlığı",
-      category: "Sağlık",
-      summary: "Hemşire, ebe, sağlık teknikeri ve sürekli işçi kadro dağılımı yayımlandı.",
-      requirements: ["İlgili sağlık mezuniyeti", "KPSS ilgili puan türü"],
-      applicationStart: "22.09.2026",
-      applicationDeadline: "08.10.2026",
-      officialUrl: "https://yhgm.saglik.gov.tr",
-      publishedAt: "2026-09-13",
-      scannedAt12pm: "Bugün 12:00",
-      isHot: true,
-    ),
-  ];
+  List<Announcement> get _vipAnnouncements {
+    final openChannels = AnnouncementsCatalog.staticCatalog
+        .where((c) => c.status == "Açık")
+        .toList();
+
+    return openChannels.map((c) {
+      return Announcement(
+        id: c.id,
+        title: c.title,
+        organization: c.organization,
+        category: c.category,
+        summary: c.description.isNotEmpty ? c.description : "${c.position} - Kontenjan: ${c.quota}",
+        requirements: c.requirements.isNotEmpty ? c.requirements : ["Başvuru şartları için resmi kılavuza bakınız."],
+        applicationStart: c.date,
+        applicationDeadline: c.deadline,
+        officialUrl: c.officialUrl,
+        publishedAt: c.date,
+        scannedAt12pm: "Bugün 12:00",
+        isHot: true,
+      );
+    }).toList();
+  }
 
   Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
+    String target = url;
+    if (target.contains("vatandas.jandarma.gov.tr")) {
+      target = "https://personeltemin.jandarma.gov.tr";
+    }
+    if (target.contains("personeltemin.msb.gov.tr/duyurular")) {
+      target = "https://personeltemin.msb.gov.tr";
+    }
+    final uri = Uri.parse(target);
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {

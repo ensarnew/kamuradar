@@ -919,9 +919,17 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
   List<ChannelAlarm> get _filteredChannels {
     final list = _channels.where((c) {
-      if (_selectedTabIndex == 0 && c.contentType != "ILAN") return false;
-      if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
-      if (_selectedTabIndex == 2 && c.contentType != "MULAKAT" && c.contentType != "SONUC") return false;
+      if (_selectedStatus == "Yakında") {
+        // Kullanıcı "Yakında" filtresini seçtiğinde yaklaşan tüm alım ve sınav takvimleri eksiksiz görünsün
+        if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
+      } else if (_selectedStatus == "Açık") {
+        // Kullanıcı "Açık" filtresini seçtiğinde tüm aktif alımlar eksiksiz görünsün
+        if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
+      } else {
+        if (_selectedTabIndex == 0 && c.contentType != "ILAN") return false;
+        if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
+        if (_selectedTabIndex == 2 && c.contentType != "MULAKAT" && c.contentType != "SONUC") return false;
+      }
       if (_selectedSector == "Kamu" && c.sectorType != "KAMU") return false;
       if (_selectedSector == "Normal" && c.sectorType != "OZEL" && c.sectorType != "NORMAL") return false;
       if (_selectedCategory != "Tümü" && c.category != _selectedCategory) return false;

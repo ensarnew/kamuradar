@@ -24,36 +24,60 @@ class AnnouncementsCatalog {
 
   static bool _isUpcomingSchedule(ChannelAlarm ch) {
     final id = ch.id.toLowerCase();
-    if (id == "polis-01" || id == "egm-bekci" || id == "paem-komiser" || 
-        id == "pmyo-polis-okulu" || id == "jandarma-astsubay-jamyo" || id == "msu-subay" || id == "msu-astsubay") {
-      return true;
-    }
+    // 1. Kesinlikle süresi bitmiş alımlar Yakında olamaz (kullanıcıyı yanıltmaz)
+    if (id == "jandarma-01" || id == "saglik-01" || id == "adalet-01") return false;
+
+    // 2. Takvimi beklenen büyük kamu alımları (POMEM, Bekçi, Subay/Astsubay, Öğretmen vb.)
+    const upcomingRecruitmentIds = {
+      "polis-01", "egm-bekci", "paem-komiser", "pmyo-polis-okulu", "jandarma-astsubay-jamyo",
+      "msu-subay", "msu-astsubay", "msb-subay", "msb-astsubay", "meb-ogretmen-20k",
+      "adalet-cte-ikm", "aile-bakanligi-asdep", "hazine-maliye-guy", "ticaret-gumruk-muhafaza",
+      "kultur-turizm-arkeolog", "ulastirma-denetim", "diyanet-imam-hatip", "icisleri-kaymakamlik",
+      "sayistay-denetci", "danistay-tetkik", "spk-uzman", "bddk-uzman", "tuik-uzman"
+    };
+    if (upcomingRecruitmentIds.contains(id)) return true;
+
+    // 3. Sınavlar ve ÖSYM Takvimi
     if (ch.contentType == "SINAV" || ch.category.contains("Sınav") || ch.category.contains("ÖSYM")) {
       return true;
     }
+
+    // 4. Katalogda orijinal durumu Yakında olanlar
     return ch.status == "Yakında";
   }
 
   static bool _isActuallyOpenAnnouncement(ChannelAlarm ch, int i) {
     final id = ch.id.toLowerCase();
-    // 1. Canlı taranan bot ilanları (Resmî Gazete, İŞKUR, Kariyer Kapısı)
-    if (id.startsWith("rg-live-") || id.startsWith("iskur-live-") || 
+    // 1. Kesinlikle süresi bitmiş alımlar Açık olamaz (kullanıcıyı yanıltmaz)
+    if (id == "jandarma-01" || id == "saglik-01" || id == "adalet-01") return false;
+
+    // 2. Canlı taranan bot ilanları (Resmî Gazete, İŞKUR, Kariyer Kapısı)
+    if (id.startsWith("rg-") || id.startsWith("iskur-") || 
         id.startsWith("kariyer-kapisi-") || id.startsWith("osym-daily-") || 
         id.startsWith("jnd-daily-") || id.startsWith("msu-daily-") || id.startsWith("live-")) {
       return true;
     }
-    // 2. Şu an resmi portallarında aktif başvuru ve alım süreci olan güncel kamu ilanları
+
+    // 3. Şu an resmi portallarında aktif başvuru ve alım süreci olan güncel kamu ilanları
     const activeIds = {
       "msb-iscialimi", "icisleri-nufus", "icisleri-112-cagri", "genclik-spor-yurt",
-      "tarim-orman-muhendis", "sahil-guvenlik", "deniz-kuvvetleri", "kara-kuvvetleri-er",
-      "egm-kriminal", "belediye-01", "belediye-02", "belediye-03", "universite-01",
-      "universite-02", "iskur-kamu-01", "iskur-kamu-02", "saglik-surekli-isci",
-      "adalet-bilisim-01", "sanayi-uzman-01", "cevre-sehircilik-01"
+      "tarim-orman-muhendis", "sahil-guvenlik", "deniz-kuvvetleri", "hava-kuvvetleri",
+      "kara-kuvvetleri-er", "egm-kriminal", "belediye-01", "belediye-02", "belediye-03",
+      "universite-01", "universite-02", "iskur-kamu-01", "iskur-kamu-02", "saglik-surekli-isci",
+      "adalet-bilisim-01", "sanayi-uzman-01", "cevre-sehircilik-01", "cevre-sehircilik-mimar"
     };
     if (activeIds.contains(id)) return true;
 
-    // İŞKUR Kamu ve Resmî Gazete etiketli ilk 15 güncel alım
-    if ((ch.category.contains("İŞKUR") || ch.applicationPlace.contains("Kariyer Kapısı") || ch.applicationPlace.contains("İŞKUR")) && i < 40) {
+    // 4. İŞKUR, Kariyer Kapısı, Üniversiteler, Belediyeler ve Bakanlıklar genelindeki aktif alımlar (ilk 110 ilandan uygun olanlar)
+    if (i < 110 && (
+        ch.applicationPlace.contains("Kariyer Kapısı") ||
+        ch.applicationPlace.contains("İŞKUR") ||
+        ch.applicationPlace.contains("e-Devlet") ||
+        ch.category.contains("İŞKUR") ||
+        ch.category.contains("Belediye") ||
+        ch.category.contains("Üniversite") ||
+        ch.category.contains("Bakanlıklar")
+    )) {
       return true;
     }
 
@@ -107,6 +131,12 @@ class AnnouncementsCatalog {
     String sanitizedUrl = ch.officialUrl;
     if (sanitizedUrl.contains("vatandas.jandarma.gov.tr")) {
       sanitizedUrl = "https://personeltemin.jandarma.gov.tr";
+    }
+    if (sanitizedUrl.contains("personeltemin.msb.gov.tr/duyurular")) {
+      sanitizedUrl = "https://personeltemin.msb.gov.tr";
+    }
+    if (sanitizedUrl.startsWith("#") || sanitizedUrl.isEmpty) {
+      sanitizedUrl = "https://isealimkariyerkapisi.cbiko.gov.tr";
     }
 
     return ch.copyWith(
