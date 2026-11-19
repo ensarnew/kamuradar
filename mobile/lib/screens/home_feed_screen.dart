@@ -868,6 +868,19 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   String _selectedKpss = "Tümü";
   String _selectedEducation = "Tümü";
   String _selectedStatus = "Tümü"; // "Tümü", "Açık", "Yakında", "Kapalı"
+  String _searchQuery = "";
+  final TextEditingController _searchController = TextEditingController();
+
+  int get _activeFilterCount {
+    int count = 0;
+    if (_selectedSector != "Tümü") count++;
+    if (_selectedCategory != "Tümü") count++;
+    if (_selectedKpss != "Tümü") count++;
+    if (_selectedEducation != "Tümü") count++;
+    if (_selectedStatus != "Tümü") count++;
+    if (_searchQuery.trim().isNotEmpty) count++;
+    return count;
+  }
 
   static const List<String> kAllSectors = [
     "Tümü",
@@ -920,24 +933,60 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   int get _closedCount => _channels.where((c) => c.status == "Kapalı").length;
 
   List<ChannelAlarm> get _filteredChannels {
+    final query = _searchQuery.trim().toLowerCase();
+
     final list = _channels.where((c) {
-      if (_selectedStatus == "Yakında") {
-        // Kullanıcı "Yakında" filtresini seçtiğinde yaklaşan tüm alım ve sınav takvimleri eksiksiz görünsün
-        if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
-      } else if (_selectedStatus == "Açık") {
-        // Kullanıcı "Açık" filtresini seçtiğinde tüm aktif alımlar eksiksiz görünsün
-        if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
-      } else {
-        if (_selectedTabIndex == 0 && c.contentType != "ILAN") return false;
-        if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
-        if (_selectedTabIndex == 2 && c.contentType != "MULAKAT" && c.contentType != "SONUC") return false;
+      // 1. Canlı Arama (Metin Arama: Başlık, Kurum, Unvan, Şehir, Açıklama, Kategori)
+      if (query.isNotEmpty) {
+        final matchTitle = c.title.toLowerCase().contains(query);
+        final matchOrg = c.organization.toLowerCase().contains(query);
+        final matchPos = c.position.toLowerCase().contains(query);
+        final matchCity = c.city.toLowerCase().contains(query);
+        final matchDesc = c.description.toLowerCase().contains(query);
+        final matchCat = c.category.toLowerCase().contains(query);
+        if (!matchTitle && !matchOrg && !matchPos && !matchCity && !matchDesc && !matchCat) {
+          return false;
+        }
       }
+
+      // 2. Kategori Önceliği (Filtreleme Çakışmasını Önleme)
+      // Belirli bir kategori seçildiyse (örn: "ÖSYM & Sınavlar"), sekme kısıtlaması nedeniyle 0 sonuç kalmasını engelle
+      if (_selectedCategory != "Tümü") {
+        if (c.category != _selectedCategory) return false;
+      } else {
+        // Kategori "Tümü" iken sekmeye göre filtrele
+        if (_selectedStatus == "Yakında") {
+          if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
+        } else if (_selectedStatus == "Açık") {
+          if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
+        } else {
+          if (_selectedTabIndex == 0 && c.contentType != "ILAN") return false;
+          if (_selectedTabIndex == 1 && c.contentType != "SINAV") return false;
+          if (_selectedTabIndex == 2 && c.contentType != "MULAKAT" && c.contentType != "SONUC") return false;
+        }
+      }
+
+      // 3. Başvuru Durumu (Açık, Yakında, Kapalı)
+      if (_selectedStatus != "Tümü" && c.status != _selectedStatus) return false;
+
+      // 4. Sektör Türü (Kamu / Normal)
       if (_selectedSector == "Kamu" && c.sectorType != "KAMU") return false;
       if (_selectedSector == "Normal" && c.sectorType != "OZEL" && c.sectorType != "NORMAL") return false;
-      if (_selectedCategory != "Tümü" && c.category != _selectedCategory) return false;
+
+      // 5. KPSS Durumu
       if (_selectedKpss != "Tümü" && c.kpssStatus != _selectedKpss) return false;
-      if (_selectedEducation != "Tümü" && c.educationLevel != _selectedEducation) return false;
-      if (_selectedStatus != "Tümü" && c.status != _selectedStatus) return false;
+
+      // 6. Öğrenim Seviyesi
+      if (_selectedEducation != "Tümü") {
+        if (_selectedEducation == "Lisans" && !c.educationLevel.contains("Lisans")) return false;
+        if (_selectedEducation == "Ön Lisans" && !c.educationLevel.contains("Ön Lisans")) return false;
+        if (_selectedEducation == "Lise" && !c.educationLevel.contains("Lise")) return false;
+        if ((_selectedEducation == "Okuryazar" || _selectedEducation == "İlköğretim") &&
+            !c.educationLevel.contains("Okuryazar") && !c.educationLevel.contains("İlköğretim")) {
+          return false;
+        }
+      }
+
       return true;
     }).toList();
 
@@ -1140,163 +1189,179 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Filtreleme & Arama", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedSector = "Tümü";
-                          _selectedCategory = "Tümü";
-                          _selectedKpss = "Tümü";
-                          _selectedEducation = "Tümü";
-                          _selectedStatus = "Tümü";
-                        });
-                        setModalState(() {});
-                      },
-                      child: const Text("Sıfırla", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+          final count = _filteredChannels.length;
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                const Text("Sektör / Kurum Türü", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: kAllSectors.map((sec) {
-                    final sel = _selectedSector == sec;
-                    return ChoiceChip(
-                      label: Text(sec == "Tümü" ? "🌐 Tümü" : (sec == "Kamu" ? "🏛️ Kamu İlanları" : "🏢 Normal (Özel Sektör)")),
-                      selected: sel,
-                      onSelected: (v) {
-                        setState(() => _selectedSector = sec);
-                        setModalState(() {});
-                      },
-                      selectedColor: const Color(0xFF2563EB),
-                      backgroundColor: const Color(0xFF1E293B),
-                      labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 14),
-                const Text("Kategori", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: kAllCategories.map((cat) {
-                    final sel = _selectedCategory == cat;
-                    return ChoiceChip(
-                      label: Text(cat),
-                      selected: sel,
-                      onSelected: (v) {
-                        setState(() => _selectedCategory = cat);
-                        setModalState(() {});
-                      },
-                      selectedColor: AppTheme.primaryBlue,
-                      backgroundColor: const Color(0xFF1E293B),
-                      labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 14),
-                const Text("KPSS Durumu", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: kAllKpssStatuses.map((k) {
-                    final sel = _selectedKpss == k;
-                    return ChoiceChip(
-                      label: Text(k),
-                      selected: sel,
-                      onSelected: (v) {
-                        setState(() => _selectedKpss = k);
-                        setModalState(() {});
-                      },
-                      selectedColor: const Color(0xFFF59E0B),
-                      backgroundColor: const Color(0xFF1E293B),
-                      labelStyle: TextStyle(color: sel ? const Color(0xFF0F172A) : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 14),
-                const Text("Öğrenim Seviyesi", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: kAllEducationLevels.map((e) {
-                    final sel = _selectedEducation == e;
-                    return ChoiceChip(
-                      label: Text(e),
-                      selected: sel,
-                      onSelected: (v) {
-                        setState(() => _selectedEducation = e);
-                        setModalState(() {});
-                      },
-                      selectedColor: const Color(0xFF10B981),
-                      backgroundColor: const Color(0xFF1E293B),
-                      labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 14),
-                const Text("Başvuru Durumu (Tarihe Göre)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: kAllStatuses.map((s) {
-                    final sel = _selectedStatus == s;
-                    Color chipColor = const Color(0xFF22C55E);
-                    if (s == "Yakında") chipColor = const Color(0xFF3B82F6);
-                    if (s == "Kapalı") chipColor = const Color(0xFF64748B);
-                    if (s == "Tümü") chipColor = AppTheme.primaryBlue;
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Filtreleme & Arama",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      TextButton.icon(
+                        icon: const Icon(Icons.refresh, size: 14, color: Colors.amber),
+                        onPressed: () {
+                          setState(() {
+                            _selectedSector = "Tümü";
+                            _selectedCategory = "Tümü";
+                            _selectedKpss = "Tümü";
+                            _selectedEducation = "Tümü";
+                            _selectedStatus = "Tümü";
+                            _searchQuery = "";
+                            _searchController.clear();
+                          });
+                          setModalState(() {});
+                        },
+                        label: const Text("Tümünü Sıfırla", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text("Sektör / Kurum Türü", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: kAllSectors.map((sec) {
+                      final sel = _selectedSector == sec;
+                      return ChoiceChip(
+                        label: Text(sec == "Tümü" ? "🌐 Tümü" : (sec == "Kamu" ? "🏛️ Kamu İlanları" : "🏢 Normal (Özel Sektör)")),
+                        selected: sel,
+                        onSelected: (v) {
+                          setState(() => _selectedSector = sec);
+                          setModalState(() {});
+                        },
+                        selectedColor: const Color(0xFF2563EB),
+                        backgroundColor: const Color(0xFF1E293B),
+                        labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text("Kategori", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: kAllCategories.map((cat) {
+                      final sel = _selectedCategory == cat;
+                      return ChoiceChip(
+                        label: Text(cat),
+                        selected: sel,
+                        onSelected: (v) {
+                          setState(() => _selectedCategory = cat);
+                          setModalState(() {});
+                        },
+                        selectedColor: AppTheme.primaryBlue,
+                        backgroundColor: const Color(0xFF1E293B),
+                        labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text("KPSS Durumu", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: kAllKpssStatuses.map((k) {
+                      final sel = _selectedKpss == k;
+                      return ChoiceChip(
+                        label: Text(k),
+                        selected: sel,
+                        onSelected: (v) {
+                          setState(() => _selectedKpss = k);
+                          setModalState(() {});
+                        },
+                        selectedColor: const Color(0xFFF59E0B),
+                        backgroundColor: const Color(0xFF1E293B),
+                        labelStyle: TextStyle(color: sel ? const Color(0xFF0F172A) : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text("Öğrenim Seviyesi", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: kAllEducationLevels.map((e) {
+                      final sel = _selectedEducation == e;
+                      return ChoiceChip(
+                        label: Text(e),
+                        selected: sel,
+                        onSelected: (v) {
+                          setState(() => _selectedEducation = e);
+                          setModalState(() {});
+                        },
+                        selectedColor: const Color(0xFF10B981),
+                        backgroundColor: const Color(0xFF1E293B),
+                        labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text("Başvuru Durumu (Tarihe Göre)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: kAllStatuses.map((s) {
+                      final sel = _selectedStatus == s;
+                      Color chipColor = const Color(0xFF22C55E);
+                      if (s == "Yakında") chipColor = const Color(0xFF3B82F6);
+                      if (s == "Kapalı") chipColor = const Color(0xFF64748B);
+                      if (s == "Tümü") chipColor = AppTheme.primaryBlue;
 
-                    return ChoiceChip(
-                      label: Text(s == "Kapalı" ? "Bitenler (Kapalı)" : (s == "Yakında" ? "Yakında Başlayacaklar" : (s == "Açık" ? "Açık İlanlar" : "Tümü"))),
-                      selected: sel,
-                      onSelected: (v) {
-                        setState(() => _selectedStatus = s);
-                        setModalState(() {});
-                      },
-                      selectedColor: chipColor,
-                      backgroundColor: const Color(0xFF1E293B),
-                      labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryBlue,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("Filtreleri Uygula (${_filteredChannels.length} İlan)", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      return ChoiceChip(
+                        label: Text(s == "Kapalı" ? "Bitenler (Kapalı)" : (s == "Yakında" ? "Yakında Başlayacaklar" : (s == "Açık" ? "Açık İlanlar" : "Tümü"))),
+                        selected: sel,
+                        onSelected: (v) {
+                          setState(() => _selectedStatus = s);
+                          setModalState(() {});
+                        },
+                        selectedColor: chipColor,
+                        backgroundColor: const Color(0xFF1E293B),
+                        labelStyle: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 11, fontWeight: sel ? FontWeight.bold : FontWeight.normal),
+                      );
+                    }).toList(),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryBlue,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        "Filtreleri Uygula ($count İlan)",
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -2015,6 +2080,46 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               ),
             ),
 
+            // 🔍 Canlı Arama Çubuğu (İlan, Kurum, Şehir, Unvan Arama)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF131E33),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _searchQuery.isNotEmpty ? const Color(0xFF38BDF8) : const Color(0xFF1E2D4A),
+                    width: _searchQuery.isNotEmpty ? 1.5 : 1.0,
+                  ),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: "İlan, kurum, unvan veya şehir ara... (Örn: Polis, Hemşire, İstanbul)",
+                    hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                    prefixIcon: const Icon(Icons.search, color: Color(0xFF38BDF8), size: 20),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = "");
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  ),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
+                ),
+              ),
+            ),
+
             // Bilgi Kutusu
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -2093,12 +2198,12 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: (_selectedKpss != "Tümü" || _selectedEducation != "Tümü")
+                        color: (_activeFilterCount > 0)
                             ? Colors.amber.withValues(alpha: 0.25)
                             : const Color(0xFF131E33),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: (_selectedKpss != "Tümü" || _selectedEducation != "Tümü")
+                          color: (_activeFilterCount > 0)
                               ? Colors.amber
                               : const Color(0xFF1E2D4A),
                         ),
@@ -2109,17 +2214,17 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                           Icon(
                             Icons.tune,
                             size: 14,
-                            color: (_selectedKpss != "Tümü" || _selectedEducation != "Tümü")
+                            color: (_activeFilterCount > 0)
                                 ? Colors.amber
                                 : Colors.white70,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            "Filtre",
+                            _activeFilterCount > 0 ? "Filtre ($_activeFilterCount)" : "Filtre",
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: (_selectedKpss != "Tümü" || _selectedEducation != "Tümü")
+                              color: (_activeFilterCount > 0)
                                   ? Colors.amber
                                   : Colors.white70,
                             ),
@@ -2279,7 +2384,62 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               ),
 
             // İlan Listesi (Filtrelenmiş & İlk 4 açık, 5+ kilitli)
-            ListView.builder(
+            if (filteredChannels.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF131E33),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF1E2D4A)),
+                        ),
+                        child: const Icon(Icons.search_off_rounded, size: 42, color: Color(0xFF38BDF8)),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Kriterlere Uygun İlan Bulunamadı",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Seçtiğiniz filtreleri veya arama kelimesini sıfırlayarak tüm kamu ilanlarına anında dönebilirsiniz.",
+                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 18),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                        ),
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text("Tüm Filtreleri Sıfırla", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        onPressed: () {
+                          setState(() {
+                            _selectedSector = "Tümü";
+                            _selectedCategory = "Tümü";
+                            _selectedKpss = "Tümü";
+                            _selectedEducation = "Tümü";
+                            _selectedStatus = "Tümü";
+                            _searchQuery = "";
+                            _searchController.clear();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16),
