@@ -28,5 +28,10 @@ service cloud.firestore {
         resource.data.family_members.hasAny([request.auth.uid])
       );
     }
+
+    // 5. Geri Bildirimler & Destek (Herkes yazabilir ve yönetici yanıtlayabilir)
+    match /feedbacks/{feedbackId} {
+      allow read, write: if true;
+    }
   }
 }

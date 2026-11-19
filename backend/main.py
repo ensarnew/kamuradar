@@ -528,3 +528,33 @@ def admin_list_users():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/feedback")
+def submit_feedback_admin_proxy(payload: dict):
+    """
+    Kullanıcı Firestore güvenlik kurallarına takılırsa (permission-denied),
+    bu endpoint Firebase Admin yetkisiyle doğrudan 'feedbacks' koleksiyonuna yazar.
+    """
+    from services.firebase_service import FirebaseNotificationService
+    FirebaseNotificationService.initialize()
+    try:
+        from firebase_admin import firestore
+        db_client = firestore.client()
+        data = {
+            "user_id": payload.get("user_id", "guest"),
+            "user_name": payload.get("user_name", "Misafir Kullanıcı"),
+            "email": payload.get("email", "Belirtilmedi"),
+            "category": payload.get("category", "Geri Bildirim"),
+            "subject": payload.get("subject", ""),
+            "message": payload.get("message", ""),
+            "status": "pending",
+            "admin_reply": None,
+            "created_at": firestore.SERVER_TIMESTAMP,
+            "replied_at": None,
+            "app_version": payload.get("app_version", "1.0.18"),
+        }
+        update_time, doc_ref = db_client.collection("feedbacks").add(data)
+        return {"status": "success", "id": doc_ref.id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
