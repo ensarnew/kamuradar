@@ -279,6 +279,77 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
     );
   }
 
+  // 1.1 Uygulama silinip yeniden yüklendiğinde veya cihaz değiştirildiğinde VIP durumunu geri yükle
+  Future<void> _restorePurchasesWithFeedback() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: Card(
+          color: Color(0xFF131E33),
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: AppTheme.amberGold),
+                SizedBox(height: 16),
+                Text(
+                  "Google Play & Bulut Aboneliğiniz\nKontrol Ediliyor...",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // 1. Google Play Store'dan satın alımları sorgula
+      await InAppPurchaseService.instance.restorePurchases();
+      // 2. Firebase & KamuRadar Bulut sunucusundan kullanıcı profilini geri yükle
+      await FirebaseSyncService.restoreUserDataFromCloud();
+      final isVip = await FirebaseSyncService.isVip();
+
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      if (mounted) {
+        if (isVip) {
+          setState(() {
+            _isPlanPurchased = true;
+          });
+          _checkPlanRole();
+          widget.onPlanPurchased?.call();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Color(0xFF10B981),
+              content: Text("👑 Tebrikler! VIP aboneliğiniz başarıyla tespit edildi ve geri yüklendi."),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Color(0xFFEF4444),
+              content: Text("Bu cihazda veya Google hesabında aktif bir VIP abonelik bulunamadı."),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFEF4444),
+            content: Text("Abonelik kontrolü hatası: $e"),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _handlePlayBillingSuccess(String planKey) async {
     final planNames = [
       "Aylık VIP (39.99 ₺)",
@@ -789,6 +860,24 @@ class _FamilySubscriptionScreenState extends State<FamilySubscriptionScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                   ),
                   onPressed: _buySubscription,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Aboneliği Geri Yükle Butonu (Silip yeniden yükleyenler veya cihaz değiştirenler için)
+              Center(
+                child: TextButton.icon(
+                  onPressed: _restorePurchasesWithFeedback,
+                  icon: const Icon(Icons.restore, color: Color(0xFF38BDF8), size: 18),
+                  label: const Text(
+                    "Daha önce satın aldınız mı? Aboneliği Geri Yükle",
+                    style: TextStyle(
+                      color: Color(0xFF38BDF8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
                 ),
               ),
             ] else ...[

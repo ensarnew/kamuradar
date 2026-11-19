@@ -621,4 +621,127 @@ def admin_delete_feedback(doc_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/user/vip-status")
+def get_user_vip_status(uid: Optional[str] = None, email: Optional[str] = None):
+    """
+    Kullanıcı uygulamayı silip yeniden yüklese veya cihaz değiştirse bile
+    VIP / Abonelik durumunu Firebase Admin köküyle %100 doğrulayıp geri döndürür.
+    """
+    if not uid and not email:
+        return {"is_vip": False, "vip_plan": "free", "reason": "uid_or_email_required"}
+
+    from services.firebase_service import FirebaseNotificationService
+    FirebaseNotificationService.initialize()
+    try:
+        from firebase_admin import firestore
+        db_client = firestore.client()
+
+        # 1. Önce UID ile doğrudan doküman kontrolü
+        if uid:
+            doc = db_client.collection("users").document(uid).get()
+            if doc.exists:
+                data = doc.to_dict() or {}
+                if data.get("is_vip") is True:
+                    return {
+                        "is_vip": True,
+                        "vip_plan": data.get("vip_plan", "vip_family_plan"),
+                        "invite_code": data.get("invite_code"),
+                        "joined_family_code": data.get("joined_family_code"),
+                        "source": "firestore_uid"
+                    }
+
+        # 2. UID yoksa veya bulunamadıysa e-posta ile arama
+        if email:
+            docs = db_client.collection("users").where("email", "==", email.strip().lower()).limit(1).stream()
+            for d in docs:
+                data = d.to_dict() or {}
+                if data.get("is_vip") is True:
+                    return {
+                        "is_vip": True,
+                        "vip_plan": data.get("vip_plan", "vip_family_plan"),
+                        "invite_code": data.get("invite_code"),
+                        "joined_family_code": data.get("joined_family_code"),
+                        "source": "firestore_email"
+                    }
+
+        # 3. Aile Grubu Üyeliği Kontrolü (subscriptions koleksiyonu)
+        # Kullanıcı aile grubuna davet edilmiş olabilir
+        target_id = uid or email
+        if target_id:
+            sub_docs = db_client.collection("subscriptions").stream()
+            for s in sub_docs:
+                s_data = s.to_dict() or {}
+                members = s_data.get("family_members", [])
+                owner_id = s_data.get("owner_user_id")
+                owner_email = s_data.get("owner_email")
+                if target_id == owner_id or (email and email == owner_email):
+                    return {
+                        "is_vip": True,
+                        "vip_plan": "vip_family_plan",
+                        "is_owner": True,
+                        "invite_code": s.id,
+                        "source": "subscription_owner"
+                    }
+                if target_id in members or (email and email in members):
+                    return {
+                        "is_vip": True,
+                        "vip_plan": "vip_family_plan",
+                        "is_owner": False,
+                        "joined_family_code": s.id,
+                        "source": "subscription_member"
+                    }
+
+        return {"is_vip": False, "vip_plan": "free"}
+    except Exception as e:
+        print(f"VIP Status check exception: {e}")
+        return {"is_vip": False, "vip_plan": "free", "error": str(e)}
+
+
+@app.post("/api/user/vip-sync")
+def sync_user_vip_status(payload: dict):
+    """
+    Mobil cihazda Google Play Store satın alımı yapıldığında veya geri yüklendiğinde
+    kullanıcı VIP bilgisini sunucu kök yetkisiyle Firebase'e yazar.
+    """
+    from services.firebase_service import FirebaseNotificationService
+    FirebaseNotificationService.initialize()
+    try:
+        from firebase_admin import firestore
+        db_client = firestore.client()
+
+        uid = payload.get("uid")
+        email = payload.get("email")
+        is_vip = payload.get("is_vip", True)
+        plan = payload.get("vip_plan", "vip_family_plan")
+
+        if not uid and not email:
+            raise HTTPException(status_code=400, detail="UID veya email zorunludur")
+
+        user_doc_ref = None
+        if uid:
+            user_doc_ref = db_client.collection("users").document(uid)
+        elif email:
+            docs = list(db_client.collection("users").where("email", "==", email.strip().lower()).limit(1).stream())
+            if docs:
+                user_doc_ref = docs[0].reference
+
+        update_data = {
+            "is_vip": is_vip,
+            "vip_plan": plan if is_vip else "free",
+            "vip_synced_at": firestore.SERVER_TIMESTAMP,
+        }
+        if email:
+            update_data["email"] = email.strip().lower()
+
+        if user_doc_ref:
+            user_doc_ref.set(update_data, merge=True)
+        elif uid:
+            db_client.collection("users").document(uid).set(update_data, merge=True)
+
+        return {"status": "success", "is_vip": is_vip, "vip_plan": plan}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 

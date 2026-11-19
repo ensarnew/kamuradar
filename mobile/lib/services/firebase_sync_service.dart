@@ -16,11 +16,15 @@ class FirebaseSyncService {
   static const String _keyIsGoogleLoggedIn = "is_google_logged_in";
   static const String _keyIsGuest = "is_guest_mode";
 
-  // 1. VIP Durumunu Oku (Önce Yerel Hızlı Önbellek, Oturum Açıksa Buluttan Doğrula)
+  // Tüm uygulamada canlı VIP durumu dinleyicisi
+  static final ValueNotifier<bool> vipNotifier = ValueNotifier<bool>(false);
+
+  // 1. VIP Durumunu Oku (Önce Yerel Hızlı Önbellek, Oturum Açıksa Buluttan ve Kök Sunucudan Doğrula)
   static Future<bool> isVip() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       bool localVip = prefs.getBool(_keyIsVip) ?? false;
+      vipNotifier.value = localVip;
 
       // Kullanıcının oturumu varsa Firestore'dan güncel VIP durumunu kontrol et
       final user = _auth.currentUser;
@@ -33,12 +37,33 @@ class FirebaseSyncService {
             if (cloudVip != localVip) {
               localVip = cloudVip;
               await prefs.setBool(_keyIsVip, cloudVip);
+              vipNotifier.value = cloudVip;
               if (data['vip_plan'] != null) {
                 await prefs.setString(_keyVipPlan, data['vip_plan'].toString());
               }
             }
           }
         } catch (_) {}
+
+        // Eğer yerel ve Firestore'da false ise, backend root API üzerinden kontrol et (Güvenlik kurallarından muaftır)
+        if (!localVip) {
+          try {
+            final emailParam = user.email != null ? Uri.encodeComponent(user.email!) : '';
+            final uri = Uri.parse("https://kamuradar.onrender.com/api/user/vip-status?uid=${user.uid}&email=$emailParam");
+            final res = await http.get(uri).timeout(const Duration(seconds: 4));
+            if (res.statusCode == 200) {
+              final body = jsonDecode(res.body);
+              if (body['is_vip'] == true) {
+                localVip = true;
+                await prefs.setBool(_keyIsVip, true);
+                vipNotifier.value = true;
+                if (body['vip_plan'] != null) {
+                  await prefs.setString(_keyVipPlan, body['vip_plan'].toString());
+                }
+              }
+            }
+          } catch (_) {}
+        }
       }
 
       return localVip;
@@ -47,26 +72,43 @@ class FirebaseSyncService {
     }
   }
 
-  // 2. VIP Durumunu Hem Telefona Hem Firebase Firestore'a Kaydet
+  // 2. VIP Durumunu Hem Telefona Hem Firebase Firestore'a ve Sunucuya Kaydet
   static Future<void> setVipStatus(bool isVip, {String plan = "vip_family_plan"}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsVip, isVip);
       await prefs.setString(_keyVipPlan, plan);
+      vipNotifier.value = isVip;
 
       final user = _auth.currentUser;
       if (user != null) {
-        await _firestore.collection('users').doc(user.uid).set({
-          'is_vip': isVip,
-          'vip_plan': plan,
-          'vip_updated_at': FieldValue.serverTimestamp(),
-          'email': user.email ?? '',
-          'display_name': user.displayName ?? '',
-          'last_active': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        try {
+          await _firestore.collection('users').doc(user.uid).set({
+            'is_vip': isVip,
+            'vip_plan': plan,
+            'vip_updated_at': FieldValue.serverTimestamp(),
+            'email': user.email ?? '',
+            'display_name': user.displayName ?? '',
+            'last_active': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        } catch (_) {}
+
+        // Sunucu kök API'sine de anında gönder (güvenlik kurallarından etkilenmez)
+        try {
+          await http.post(
+            Uri.parse("https://kamuradar.onrender.com/api/user/vip-sync"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "uid": user.uid,
+              "email": user.email ?? '',
+              "is_vip": isVip,
+              "vip_plan": plan,
+            }),
+          ).timeout(const Duration(seconds: 4));
+        } catch (_) {}
 
         if (kDebugMode) {
-          print("☁️ Firebase: Kullanıcı VIP durumu '${isVip ? 'VIP' : 'STANDART'}' olarak kaydedildi (${user.uid})");
+          print("☁️ Firebase & Sunucu: Kullanıcı VIP durumu '${isVip ? 'VIP' : 'STANDART'}' olarak kaydedildi (${user.uid})");
         }
       } else {
         if (kDebugMode) {
@@ -144,8 +186,40 @@ class FirebaseSyncService {
       final user = _auth.currentUser;
       if (user == null) return null;
 
-      final doc = await _firestore.collection('users').doc(user.uid).get();
-      if (!doc.exists || doc.data() == null) {
+      final prefs = await SharedPreferences.getInstance();
+      Map<String, dynamic>? data;
+
+      // A. Doğrudan Firestore'dan çekmeyi dene
+      try {
+        final doc = await _firestore.collection('users').doc(user.uid).get();
+        if (doc.exists && doc.data() != null) {
+          data = Map<String, dynamic>.from(doc.data()!);
+        }
+      } catch (e) {
+        if (kDebugMode) print("Firestore okuma notu: $e");
+      }
+
+      // B. Firestore'da doküman yoksa veya VIP değilse, Backend Root API'den sorgula (E-posta/Aile Grubu/Abonelikler)
+      if (data == null || data['is_vip'] != true) {
+        try {
+          final emailParam = user.email != null ? Uri.encodeComponent(user.email!) : '';
+          final uri = Uri.parse("https://kamuradar.onrender.com/api/user/vip-status?uid=${user.uid}&email=$emailParam");
+          final res = await http.get(uri).timeout(const Duration(seconds: 4));
+          if (res.statusCode == 200) {
+            final apiData = jsonDecode(res.body);
+            if (apiData['is_vip'] == true) {
+              data ??= {};
+              data['is_vip'] = true;
+              data['vip_plan'] = apiData['vip_plan'] ?? 'vip_family_plan';
+              if (apiData['invite_code'] != null) data['invite_code'] = apiData['invite_code'];
+              if (apiData['joined_family_code'] != null) data['joined_family_code'] = apiData['joined_family_code'];
+              if (apiData['is_owner'] == true) data['is_family_group_owner'] = true;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (data == null) {
         // Yeni kullanıcı dokümanını ilk defa oluştur
         await _firestore.collection('users').doc(user.uid).set({
           'uid': user.uid,
@@ -159,28 +233,25 @@ class FirebaseSyncService {
           'active_alarms': ["ch-01", "ch-02"],
         }, SetOptions(merge: true));
 
-        // Yeni kullanıcının cihazda eski hesaptan kalan VIP haklarını kesinlikle sıfırla
-        final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(_keyIsVip, false);
         await prefs.setString(_keyVipPlan, 'free');
         await prefs.setBool("is_family_group_owner", false);
         await prefs.remove("joined_family_code");
         await prefs.remove("user_family_invite_code");
         await prefs.remove("family_members_list");
+        vipNotifier.value = false;
         return null;
       }
-
-      final data = doc.data()!;
-      final prefs = await SharedPreferences.getInstance();
 
       // VIP Durumu Geri Yükle
       final bool isVipCloud = data['is_vip'] == true;
       final String planCloud = (data['vip_plan'] ?? 'free').toString();
-      final bool isOwner = isVipCloud && (planCloud == 'yearly_vip' || planCloud == 'monthly_vip' || planCloud == 'vip_family_plan');
+      final bool isOwner = isVipCloud && (planCloud == 'yearly_vip' || planCloud == 'monthly_vip' || planCloud == 'vip_family_plan' || data['is_family_group_owner'] == true);
 
       await prefs.setBool(_keyIsVip, isVipCloud);
       await prefs.setString(_keyVipPlan, planCloud);
       await prefs.setBool("is_family_group_owner", isOwner);
+      vipNotifier.value = isVipCloud;
 
       // Sabit Davet Kodu veya Katılınan Kodu Buluttan Geri Yükle
       if (data.containsKey('invite_code') && data['invite_code'] != null) {
@@ -198,7 +269,7 @@ class FirebaseSyncService {
       }
 
       if (kDebugMode) {
-        print("✅ Firebase: Kullanıcı profili buluttan geri yüklendi (${user.email}) - VIP: $isVipCloud, Yönetici: $isOwner");
+        print("✅ Firebase & Sunucu: Kullanıcı profili buluttan geri yüklendi (${user.email}) - VIP: $isVipCloud, Yönetici: $isOwner");
       }
       return data;
     } catch (e) {

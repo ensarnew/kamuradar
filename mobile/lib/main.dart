@@ -79,11 +79,17 @@ class _AuthGateState extends State<AuthGate> {
   void initState() {
     super.initState();
     _checkAuth();
-    _authSubscription = AuthService.authStateChanges.listen((user) {
+    _authSubscription = AuthService.authStateChanges.listen((user) async {
       if (mounted) {
         setState(() {
           _isAuthenticated = user != null;
         });
+        if (user != null) {
+          try {
+            await FirebaseSyncService.restoreUserDataFromCloud();
+            await InAppPurchaseService.instance.restorePurchases();
+          } catch (_) {}
+        }
       }
     });
   }
@@ -97,6 +103,10 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _checkAuth() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
+      try {
+        await FirebaseSyncService.restoreUserDataFromCloud();
+        await InAppPurchaseService.instance.restorePurchases();
+      } catch (_) {}
       if (mounted) setState(() => _isAuthenticated = true);
       return;
     }
@@ -148,6 +158,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void initState() {
     super.initState();
     _loadVipStatus();
+    FirebaseSyncService.vipNotifier.addListener(_onVipChanged);
+  }
+
+  void _onVipChanged() {
+    if (mounted && _isVip != FirebaseSyncService.vipNotifier.value) {
+      setState(() {
+        _isVip = FirebaseSyncService.vipNotifier.value;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    FirebaseSyncService.vipNotifier.removeListener(_onVipChanged);
+    super.dispose();
   }
 
   Future<void> _loadVipStatus() async {

@@ -45,6 +45,11 @@ class InAppPurchaseService {
       // Ürün bilgilerini mağazadan sorgula
       if (_isStoreAvailable) {
         await loadProducts();
+        // OTOMATİK ABONELİK SORGUSU: Kullanıcı uygulamayı silip yeniden yüklese bile
+        // Google Play Store'daki mevcut aktif aboneliği arka planda anında tespit edip VIP yapar
+        try {
+          await _iap.restorePurchases();
+        } catch (_) {}
       }
     } catch (e) {
       if (kDebugMode) print("❌ InAppPurchase init hatası: $e");
@@ -111,11 +116,18 @@ class InAppPurchaseService {
   }
 
   /// Geçmiş Satın Alımları Geri Yükle
-  Future<void> restorePurchases() async {
+  Future<bool> restorePurchases() async {
     try {
+      if (!_isStoreAvailable) {
+        _isStoreAvailable = await _iap.isAvailable();
+      }
+      if (!_isStoreAvailable) return false;
       await _iap.restorePurchases();
+      return true;
     } catch (e) {
+      if (kDebugMode) print("Satın alımlar geri yüklenemedi: $e");
       onPurchaseFailed?.call("Satın alımlar geri yüklenemedi: $e");
+      return false;
     }
   }
 

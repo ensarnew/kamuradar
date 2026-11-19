@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/firebase_sync_service.dart';
+import '../services/in_app_purchase_service.dart';
 import '../main.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -26,6 +27,11 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final user = await AuthService.signInWithGoogle();
       if (user != null) {
+        // Oturum açıldıktan sonra hem Google Play aboneliklerini hem Firebase VIP durumunu doğrula
+        try {
+          await InAppPurchaseService.instance.restorePurchases();
+        } catch (_) {}
+
         if (!mounted) return;
         if (widget.onLoginSuccess != null) {
           widget.onLoginSuccess!();
@@ -71,6 +77,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _continueAsGuest() async {
     await FirebaseSyncService.setGuestMode(true);
+    // Misafir modunda bile cihazın Google Play Store hesabında aktif VIP aboneliği var mı kontrol et
+    try {
+      await InAppPurchaseService.instance.restorePurchases();
+    } catch (_) {}
+
     if (!mounted) return;
     if (widget.onLoginSuccess != null) {
       widget.onLoginSuccess!();

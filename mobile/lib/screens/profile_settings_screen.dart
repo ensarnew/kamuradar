@@ -6,6 +6,7 @@ import '../services/cache_service.dart';
 import '../services/ad_service.dart';
 import '../services/notification_service.dart';
 import '../services/firebase_sync_service.dart';
+import '../services/in_app_purchase_service.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'admin_panel_screen.dart';
@@ -485,6 +486,40 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     ),
                   ],
                 ),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () async {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Abonelik durumu kontrol ediliyor...")),
+                  );
+                  try {
+                    await InAppPurchaseService.instance.restorePurchases();
+                  } catch (_) {}
+                  await FirebaseSyncService.restoreUserDataFromCloud();
+                  final isVip = await FirebaseSyncService.isVip();
+                  if (mounted) {
+                    setState(() => _isVip = isVip);
+                    widget.onUpgradeVip?.call();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: isVip ? AppTheme.successGreen : AppTheme.urgentRed,
+                        content: Text(isVip ? "👑 VIP durumunuz doğrulandı ve aktif!" : "Aktif bir VIP aboneliği bulunamadı."),
+                      ),
+                    );
+                  }
+                },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.sync_rounded, size: 14, color: Color(0xFF38BDF8)),
+                    SizedBox(width: 4),
+                    Text(
+                      "VIP Aboneliğimi / Satın Alımları Geri Yükle",
+                      style: TextStyle(fontSize: 11, color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         );
