@@ -3,10 +3,12 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 import '../services/firebase_sync_service.dart';
 import '../services/api_service.dart';
 import 'home_feed_screen.dart';
+import 'admin_feedbacks_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({Key? key}) : super(key: key);
@@ -524,7 +526,91 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               ],
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
+
+            // 1.2 📨 KULLANICI GERİ BİLDİRİMLERİ & YANITLA (Canlı Bekleyen Sayacıyla)
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance.collection('feedbacks').snapshots(),
+              builder: (context, snapshot) {
+                final docs = snapshot.data?.docs ?? [];
+                final pendingCount = docs.where((d) => d.data()['status'] != 'replied').length;
+
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF131E33),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: pendingCount > 0 ? Colors.amber : const Color(0xFF1E2D4A),
+                      width: pendingCount > 0 ? 1.5 : 1.0,
+                    ),
+                    boxShadow: [
+                      if (pendingCount > 0)
+                        BoxShadow(color: Colors.amber.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 3)),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: (pendingCount > 0 ? Colors.amber : const Color(0xFF38BDF8)).withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.mark_email_unread_rounded,
+                          color: pendingCount > 0 ? Colors.amber : const Color(0xFF38BDF8),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Kullanıcı Geri Bildirimleri & İstekler",
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              pendingCount > 0
+                                  ? "🚨 $pendingCount yeni yanıt bekleyen bildirim var!"
+                                  : "Tüm bildirimler okundu ve yanıtlandı (${docs.length} Toplam)",
+                              style: TextStyle(
+                                color: pendingCount > 0 ? const Color(0xFFFBBF24) : Colors.white60,
+                                fontSize: 11,
+                                fontWeight: pendingCount > 0 ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: pendingCount > 0 ? Colors.amber : const Color(0xFF1E293B),
+                          foregroundColor: pendingCount > 0 ? const Color(0xFF0F172A) : Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const AdminFeedbacksScreen()),
+                          );
+                        },
+                        child: Text(
+                          pendingCount > 0 ? "Oku ($pendingCount)" : "İncele",
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 14),
 
             // 1.5 📡 ÖZEL LİNK TAKİPÇİLERİ CANLI TARAMA & BİLDİRİM (YÖNETİCİ BUTONU)
             Container(

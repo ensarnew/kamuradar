@@ -9,6 +9,7 @@ import '../services/firebase_sync_service.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'admin_panel_screen.dart';
+import 'feedback_screen.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   final bool isVip;
@@ -362,6 +363,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
           // 5. DEPOLAMA & ÇEVRİMDIŞI MOD
           _buildStorageSection(),
+
+          const SizedBox(height: 16),
+
+          // 5.5 GERİ BİLDİRİM & DESTEK
+          _buildFeedbackCard(),
 
           const SizedBox(height: 16),
 
@@ -1243,6 +1249,43 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  // 5.5 Geri Bildirim & Destek Kartı
+  Widget _buildFeedbackCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF131E33),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF1E2D4A)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.rate_review_outlined, color: Color(0xFF38BDF8), size: 22),
+        ),
+        title: const Text(
+          "Geri Bildirim & Hata Bildir",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        subtitle: const Text(
+          "İstek, öneri veya karşılaştığınız sorunları doğrudan iletin",
+          style: TextStyle(color: Colors.white60, fontSize: 11),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 14),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const FeedbackScreen()),
+          );
+        },
       ),
     );
   }
