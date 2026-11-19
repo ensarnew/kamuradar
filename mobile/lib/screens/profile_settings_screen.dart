@@ -33,6 +33,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   bool _isScanningWatchers = false;
   bool get _effectiveVip => widget.isVip || _isVip;
 
+  // 🎯 Akıllı KPSS Puanı ve Tercihler
+  double _userKpssScore = 0.0;
+  String _userKpssType = "P3 - Lisans";
+  String _userKpssEducation = "Lisans";
+
   @override
   void didUpdateWidget(ProfileSettingsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -160,12 +165,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final activeIds = await CacheService.getActiveAlarms();
     final bonus = await CacheService.getBonusNotifications();
     final used = await CacheService.getUsedNotifications();
+    final kpss = await CacheService.getUserKpssProfile();
+    final double score = (kpss['score'] as num?)?.toDouble() ?? 0.0;
+    final String kType = (kpss['type'] ?? "P3 - Lisans").toString();
+    final String edu = (kpss['education'] ?? "Lisans").toString();
+
     await _checkVipStatus();
     if (mounted) {
       setState(() {
         _activeAlarmCount = activeIds.length;
         _bonusNotifications = bonus;
         _usedNotifications = used;
+        _userKpssScore = score;
+        _userKpssType = kType;
+        _userKpssEducation = edu;
       });
     }
   }
@@ -322,6 +335,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
           const SizedBox(height: 16),
 
+          // 1.5 🎯 KPSS PUANIM & AKILLI EŞLEŞME
+          _buildKpssProfileSection(),
+
+          const SizedBox(height: 16),
+
           // 2. AYLIK BİLDİRİM ALMA KOTASI (UYGULAMA BİLDİRİMİ - REKLAMLA YÜKSELEN BÖLÜM)
           _buildNotificationQuotaSection(),
 
@@ -463,6 +481,321 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  // 1.5 🎯 KPSS Puanım & Akıllı Eşleşme Bölümü
+  Widget _buildKpssProfileSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131E33),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _userKpssScore > 0 ? const Color(0xFF22C55E).withValues(alpha: 0.5) : AppTheme.borderSubtle,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.military_tech_rounded, color: Colors.amber, size: 22),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "🎯 KPSS Puanım & Akıllı Eşleşme",
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    Text(
+                      "Puanınıza uygun kadroları anında yeşil etiketleyin",
+                      style: TextStyle(color: Colors.white60, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _userKpssScore > 0 ? const Color(0xFF22C55E) : Colors.amber,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                ),
+                onPressed: _showKpssScoreDialog,
+                child: Text(
+                  _userKpssScore > 0 ? "Güncelle" : "Puan Gir",
+                  style: TextStyle(
+                    color: _userKpssScore > 0 ? Colors.white : const Color(0xFF0F172A),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_userKpssScore > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF1E293B)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Puan: ${_userKpssScore.toStringAsFixed(1)} | Mezuniyet: $_userKpssEducation",
+                    style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  Text(
+                    _userKpssType,
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showKpssScoreDialog() {
+    double tempScore = _userKpssScore > 0 ? _userKpssScore : 70.0;
+    String tempEducation = _userKpssEducation;
+    String tempType = _userKpssType;
+    final scoreController = TextEditingController(text: tempScore.toStringAsFixed(1));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              decoration: const BoxDecoration(
+                color: Color(0xFF0F172A),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.military_tech_rounded, color: Colors.amber, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "🎯 KPSS Puanı & Tercih Profiliniz",
+                                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                "Puanına uyan yüzlerce kamu alımını anında yeşil gör!",
+                                style: TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Öğrenim Seviyeniz:",
+                      style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: ["Lisans", "Ön Lisans", "Lise"].map((edu) {
+                        final isSel = tempEducation == edu;
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setModalState(() {
+                                tempEducation = edu;
+                                if (edu == "Lisans") tempType = "P3 - Lisans";
+                                if (edu == "Ön Lisans") tempType = "P93 - Ön Lisans";
+                                if (edu == "Lise") tempType = "P94 - Ortaöğretim";
+                              });
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSel ? AppTheme.primaryBlue : const Color(0xFF1E293B),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSel ? const Color(0xFF38BDF8) : Colors.transparent,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                edu,
+                                style: TextStyle(
+                                  color: isSel ? Colors.white : Colors.white70,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "KPSS Puan Türü: $tempType",
+                      style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      "KPSS Puanınızı Girin (Örn: 72.50):",
+                      style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E293B),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF334155)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: scoreController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                hintText: "70.00",
+                                hintStyle: TextStyle(color: Colors.white38),
+                              ),
+                              onChanged: (val) {
+                                final parsed = double.tryParse(val.replaceAll(',', '.'));
+                                if (parsed != null) {
+                                  setModalState(() {
+                                    tempScore = parsed.clamp(0.0, 100.0);
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF22C55E).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              "${tempScore.toStringAsFixed(1)} Puan",
+                              style: const TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Slider(
+                      value: tempScore.clamp(50.0, 100.0),
+                      min: 50.0,
+                      max: 100.0,
+                      divisions: 100,
+                      activeColor: AppTheme.primaryBlue,
+                      inactiveColor: const Color(0xFF334155),
+                      onChanged: (val) {
+                        setModalState(() {
+                          tempScore = val;
+                          scoreController.text = val.toStringAsFixed(1);
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF22C55E),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          final parsed = double.tryParse(scoreController.text.replaceAll(',', '.')) ?? tempScore;
+                          final finalScore = parsed.clamp(0.0, 100.0);
+                          await CacheService.saveUserKpssProfile(
+                            score: finalScore,
+                            kpssType: tempType,
+                            education: tempEducation,
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _userKpssScore = finalScore;
+                              _userKpssType = tempType;
+                              _userKpssEducation = tempEducation;
+                            });
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("🎯 KPSS Puanı ($finalScore) başarıyla kaydedildi!"),
+                                backgroundColor: const Color(0xFF22C55E),
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text(
+                          "Puanımı Kaydet",
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

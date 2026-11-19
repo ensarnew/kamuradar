@@ -25,6 +25,9 @@ class AnnouncementDetailData {
   final String? educationLevel;
   final String? kpssStatus;
   final String? examDate;
+  final int? minKpssScore;
+  final double? userKpssScore;
+  final String? userKpssType;
 
   const AnnouncementDetailData({
     required this.id,
@@ -53,6 +56,9 @@ class AnnouncementDetailData {
     this.educationLevel,
     this.kpssStatus,
     this.examDate,
+    this.minKpssScore,
+    this.userKpssScore,
+    this.userKpssType,
   });
 }
 
@@ -439,6 +445,9 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
 
                     const SizedBox(height: 12),
 
+                    // 🎯 KPSS Puanı ve Uygunluk Analizi
+                    _buildKpssEligibilityCard(),
+
                     // 2.5 Başvuru Takvimi & Açılış - Kapanış Tarihi Kartı
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -776,6 +785,86 @@ class _AnnouncementDetailSheetState extends State<AnnouncementDetailSheet> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildKpssEligibilityCard() {
+    final item = widget.item;
+    final int minScore = item.minKpssScore ?? (item.kpssStatus == "KPSS'siz" ? 0 : 60);
+    final double userScore = item.userKpssScore ?? 0.0;
+    final String kType = item.userKpssType ?? "P3 - Lisans";
+
+    final bool isNoKpss = item.kpssStatus == "KPSS'siz" || minScore == 0;
+    final bool isEligible = isNoKpss || (userScore > 0 && userScore >= minScore);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isEligible
+            ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+            : const Color(0xFF78350F).withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isEligible
+              ? const Color(0xFF10B981)
+              : Colors.amber,
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isEligible ? Icons.verified : Icons.info_outline,
+                color: isEligible ? const Color(0xFF34D399) : Colors.amber,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isNoKpss
+                      ? "🎯 KPSS Şartsız Alım (Herkes Başvurabilir)"
+                      : (isEligible && userScore > 0
+                          ? "✅ KPSS Puanınız Bu Kadroya Yetiyor!"
+                          : (userScore > 0
+                              ? "⚠️ Taban Puanın Altındasınız"
+                              : "🎯 KPSS Taban Puan Şartı")),
+                  style: TextStyle(
+                    color: isEligible ? const Color(0xFF34D399) : Colors.amber,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isNoKpss ? "Şartsız" : "Taban: $minScore",
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isNoKpss
+                ? "Bu ilan için KPSS puanı aranmamaktadır. Genel başvuru şartlarını sağlayan adaylar doğrudan başvuru yapabilir."
+                : (userScore > 0
+                    ? (isEligible
+                        ? "Tebrikler! Sizin puanınız ($userScore), bu kadro için aranan taban puanı ($minScore) karşılıyor."
+                        : "Bu kadro en az $minScore puan talep etmektedir. Kayıtlı puanınız: $userScore ($kType).")
+                    : "Bu alım için aranan tahmini taban KPSS puanı $minScore'dir. Kendi puanınızı ana ekrandan kaydederek anında yeşil eşleşme görün."),
+            style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.3),
+          ),
+        ],
+      ),
     );
   }
 

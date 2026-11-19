@@ -108,5 +108,50 @@ class CacheService {
       return 1;
     }
   }
+
+  // 5. 🎯 Akıllı KPSS Puanı ve Tercih Profili
+  static const String _keyUserKpssScore = "user_kpss_score";
+  static const String _keyUserKpssType = "user_kpss_type";
+  static const String _keyUserEducation = "user_kpss_education";
+  static const String _keyOnlyEligibleFilter = "filter_only_kpss_eligible";
+
+  static Future<void> saveUserKpssProfile({
+    required double score,
+    required String kpssType,
+    required String education,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_keyUserKpssScore, score);
+      await prefs.setString(_keyUserKpssType, kpssType);
+      await prefs.setString(_keyUserEducation, education);
+    } catch (_) {}
+  }
+
+  static Future<Map<String, dynamic>> getUserKpssProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return {
+        "score": prefs.getDouble(_keyUserKpssScore) ?? 0.0,
+        "type": prefs.getString(_keyUserKpssType) ?? "P3 - Lisans",
+        "education": prefs.getString(_keyUserEducation) ?? "Lisans",
+        "onlyEligible": prefs.getBool(_keyOnlyEligibleFilter) ?? false,
+      };
+    } catch (_) {
+      return {
+        "score": 0.0,
+        "type": "P3 - Lisans",
+        "education": "Lisans",
+        "onlyEligible": false,
+      };
+    }
+  }
+
+  static Future<void> setOnlyEligibleFilter(bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyOnlyEligibleFilter, value);
+    } catch (_) {}
+  }
 }
 
