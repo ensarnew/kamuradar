@@ -557,4 +557,68 @@ def submit_feedback_admin_proxy(payload: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/admin/feedbacks")
+def admin_get_feedbacks():
+    """
+    Firebase Admin SDK ile Firestore 'feedbacks' koleksiyonunu okur.
+    Güvenlik kurallarından ve index engellerinden tamamen muaftır.
+    """
+    from services.firebase_service import FirebaseNotificationService
+    FirebaseNotificationService.initialize()
+    try:
+        from firebase_admin import firestore
+        db_client = firestore.client()
+        docs = db_client.collection("feedbacks").stream()
+        feedback_list = []
+        for doc in docs:
+            item = doc.to_dict() or {}
+            item["id"] = doc.id
+            if "created_at" in item and item["created_at"] is not None:
+                item["created_at"] = str(item["created_at"])
+            if "replied_at" in item and item["replied_at"] is not None:
+                item["replied_at"] = str(item["replied_at"])
+            feedback_list.append(item)
+        return feedback_list
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/feedback/reply")
+def admin_reply_feedback(payload: dict):
+    """
+    Yönetici yanıtını Firebase Admin yetkisiyle Firestore'a kaydeder.
+    """
+    from services.firebase_service import FirebaseNotificationService
+    FirebaseNotificationService.initialize()
+    try:
+        from firebase_admin import firestore
+        doc_id = payload.get("id")
+        reply_text = payload.get("admin_reply", "")
+        if not doc_id:
+            raise HTTPException(status_code=400, detail="Document ID eksik")
+        db_client = firestore.client()
+        db_client.collection("feedbacks").document(doc_id).update({
+            "status": "replied",
+            "admin_reply": reply_text,
+            "replied_at": firestore.SERVER_TIMESTAMP,
+        })
+        return {"status": "success", "id": doc_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/admin/feedback/{doc_id}")
+def admin_delete_feedback(doc_id: str):
+    """
+    Geri bildirimi Firebase Admin yetkisiyle Firestore'dan siler.
+    """
+    from services.firebase_service import FirebaseNotificationService
+    FirebaseNotificationService.initialize()
+    try:
+        from firebase_admin import firestore
+        db_client = firestore.client()
+        db_client.collection("feedbacks").document(doc_id).delete()
+        return {"status": "success", "id": doc_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
