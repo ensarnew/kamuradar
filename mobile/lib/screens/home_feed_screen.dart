@@ -3004,9 +3004,13 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                                 children: [
                                   const Icon(Icons.location_on, size: 11, color: Colors.white54),
                                   const SizedBox(width: 2),
-                                  Text(
-                                    ch.city,
-                                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                                  Flexible(
+                                    child: Text(
+                                      ch.city,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Colors.white54, fontSize: 11),
+                                    ),
                                   ),
                                   const SizedBox(width: 8),
                                   const Icon(Icons.access_time, size: 11, color: Colors.white54),
@@ -3015,10 +3019,21 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                                     ch.date,
                                     style: const TextStyle(color: Colors.white54, fontSize: 11),
                                   ),
-                                  if (_userKpssScore > 0) ...[
-                                    const SizedBox(width: 6),
+                                  if (_userKpssScore <= 0) ...[
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      ch.kpssStatus,
+                                      style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              if (_userKpssScore > 0) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
                                         color: (ch.kpssStatus == "KPSS'siz" || ch.isEligibleForKpss(_userKpssScore, education: _userKpssEducation))
                                             ? const Color(0xFF22C55E).withValues(alpha: 0.25)
@@ -3033,7 +3048,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                                       ),
                                       child: Text(
                                         (ch.kpssStatus == "KPSS'siz")
-                                            ? "🟢 Şartsız"
+                                            ? "🟢 KPSS Şartsız"
                                             : (ch.isEligibleForKpss(_userKpssScore, education: _userKpssEducation)
                                                 ? "🎯 Puanın Yetiyor (${ch.minKpssScore}+)"
                                                 : "⚠️ Taban: ${ch.minKpssScore}"),
@@ -3041,20 +3056,14 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                                           color: (ch.kpssStatus == "KPSS'siz" || ch.isEligibleForKpss(_userKpssScore, education: _userKpssEducation))
                                               ? const Color(0xFF4ADE80)
                                               : Colors.amber,
-                                          fontSize: 9,
+                                          fontSize: 9.5,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                  ] else ...[
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      ch.kpssStatus,
-                                      style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 10, fontWeight: FontWeight.bold),
-                                    ),
                                   ],
-                                ],
-                              ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
